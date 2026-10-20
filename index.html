@@ -650,7 +650,7 @@
     tampilkanHasilPesanan(pesanan, tersimpan);
 
     // encodeURIComponent mengubah spasi, enter, emoji, dll. agar aman di URL
-    const url = `https://wa.me/${KONFIG.628999029886}?text=${encodeURIComponent(teksPesananWA(pesanan))}`;
+        const url = `https://wa.me/${KONFIG.NOMOR_WA_PENJUAL}?text=${encodeURIComponent(teksPesananWA(pesanan))}`;
     if (tabWA) tabWA.location.href = url;   // isi tab yang tadi dibuka
     else window.location.href = url;        // kalau tetap diblokir, buka di tab ini
 
