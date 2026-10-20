@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Toko Arek Suroboyo — Marketplace COD</title>
+  <title>F3A Store — Produk Norvine COD</title>
 
   <!-- =========================================================
        1) TAILWIND CSS via CDN (praktis untuk prototype)
@@ -26,7 +26,9 @@
   Cara pakai:
   1. Daftar gratis di https://supabase.com → buat project baru.
   2. Buka menu "SQL Editor" → "New query" → tempel SEMUA SQL di bawah → Run.
-  3. Buka "Project Settings" → "API" → salin "Project URL" dan "anon public key"
+  3. Klik tombol "Connect" di atas dashboard (atau Project Settings → API Keys)
+     → salin "Project URL" dan "Publishable key" (sb_publishable_...) /
+     "anon public key" (eyJ...). JANGAN pakai "secret" / "service_role" key.
      → tempel ke objek KONFIG di bagian <script> paling bawah file ini.
 
   ---------------------------------------------------------------------------
@@ -99,7 +101,7 @@
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
       <a href="#katalog" class="flex items-center gap-2 font-extrabold text-lg">
         <span class="w-9 h-9 rounded-xl bg-emerald-600 text-white grid place-items-center">🛍️</span>
-        <span id="namaToko">Toko Arek Suroboyo</span>
+        <span id="namaToko">F3A Store</span>
       </a>
       <nav class="flex gap-1 text-sm font-medium">
         <a href="#katalog" class="px-3 py-2 rounded-lg hover:bg-slate-100">Katalog</a>
@@ -116,15 +118,15 @@
     <!-- ===================== HERO ===================== -->
     <section class="py-10 md:py-14 text-center">
       <span class="inline-block text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">📦 Dikirim dari Surabaya • Bisa COD</span>
-      <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight">Oleh-oleh khas Suroboyo,<br class="hidden md:block" /> bayar di tempat.</h1>
-      <p class="mt-3 text-slate-500 max-w-xl mx-auto">Pilih produk, isi alamat, ongkir langsung terhitung. Bayar ke kurir saat paket sampai.</p>
+      <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight">Produk Norvine original,<br class="hidden md:block" /> bayar di tempat.</h1>
+      <p class="mt-3 text-slate-500 max-w-xl mx-auto">Pilih produk, isi alamat, ongkir langsung terhitung. Pesanan dikonfirmasi lewat WhatsApp, bayar ke kurir saat paket sampai.</p>
     </section>
 
     <!-- ===================== 1. KATALOG PRODUK ===================== -->
     <section id="katalog" class="scroll-mt-28 pb-12">
       <h2 class="text-2xl font-bold mb-5">Katalog Produk</h2>
       <!-- Kartu produk diisi otomatis oleh fungsi renderKatalog() -->
-      <div id="daftarProduk" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+      <div id="daftarProduk" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
     </section>
 
     <!-- ===================== 2. CHECKOUT (tersembunyi sampai "Beli Sekarang") ===================== -->
@@ -195,13 +197,11 @@
             <span id="rTotal" class="text-xl font-extrabold text-emerald-600">-</span>
           </div>
 
-          <button id="btnPesan" onclick="buatPesanan()" class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition">
-            Buat Pesanan COD
+          <!-- Satu tombol: simpan pesanan + langsung buka WhatsApp penjual -->
+          <button id="btnPesan" onclick="pesanViaWhatsApp()" class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition">
+            Buat Pesanan
           </button>
-          <button onclick="konfirmasiViaWhatsApp()" class="mt-3 w-full bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold py-3 rounded-xl transition">
-            💬 Konfirmasi COD via WhatsApp
-          </button>
-          <p class="text-xs text-slate-400 mt-3 text-center">Tombol WhatsApp adalah jalur cadangan jika database belum terhubung.</p>
+          <p class="text-xs text-slate-400 mt-3 text-center">Detail pesanan akan diteruskan ke WhatsApp penjual untuk konfirmasi.</p>
 
           <!-- Muncul setelah pesanan berhasil dibuat -->
           <div id="hasilPesanan" class="hidden mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm"></div>
@@ -223,7 +223,7 @@
   </main>
 
   <footer class="border-t border-slate-200 py-6 text-center text-sm text-slate-400">
-    © <span id="tahun"></span> Toko Arek Suroboyo — Prototype marketplace mandiri
+    © <span id="tahun"></span> F3A Store — Dikirim dari Surabaya
   </footer>
 
   <!-- Notifikasi kecil (toast) -->
@@ -236,40 +236,53 @@
      ===================================================================== */
   const KONFIG = {
     NAMA_TOKO: 'F3A Store',
-    NOMOR_WA_PENJUAL: '628999029886', // nomor WA Anda, format 62..., tanpa "+" atau "0" di depan
-    SUPABASE_URL: '',      // contoh: 'https://abcdefgh.supabase.co'
-    SUPABASE_ANON_KEY: '', // contoh: 'eyJhbGciOi...'
+    NOMOR_WA_PENJUAL: '6281234567890', // nomor WA Anda, format 62..., tanpa "+" atau "0" di depan
+    SUPABASE_URL: 'https://htcztynvpcltzzicbxvo.supabase.co',
+    SUPABASE_ANON_KEY: 'sb_publishable_Y7E4uUYjID9aZ7CM1lBXJw_uuxnhE4U', // isi dengan sb_publishable_... (BUKAN sb_secret_)
     KOTA_ASAL: 'Surabaya'
   };
 
   /* =====================================================================
-     DATA PRODUK (statis). Ganti nama, harga, gambar sesuai jualan Anda.
-     berat_gram dipakai untuk simulasi ongkir.
+     DATA PRODUK
+     ⚠️ GANTI harga, deskripsi, dan berat sesuai produk asli Anda.
+        Angka harga di bawah hanya CONTOH.
+     - berat_gram : berat paket (dipakai untuk hitung ongkir)
+     - gambar     : sementara pakai gambar placeholder. Untuk foto asli,
+                    upload foto ke repo GitHub (mis. minoxidil.jpg), lalu
+                    ganti jadi  gambar: 'minoxidil.jpg'
      ===================================================================== */
   const PRODUK = [
     {
       id: 1,
-      nama: 'Sambal Bawang Khas Suroboyo',
-      deskripsi: 'Sambal bawang pedas gurih, botol 200 ml, tanpa pengawet. Cocok untuk lauk apa saja.',
-      harga: 35000,
-      berat_gram: 400,
-      gambar: 'https://placehold.co/600x400/fef3c7/b45309?text=Sambal+Bawang'
+      nama: 'Norvine Minoxidil',
+      deskripsi: 'Minoxidil Norvine original. Gunakan sesuai aturan pakai pada kemasan.',
+      harga: 85000,   // GANTI
+      berat_gram: 200,
+      gambar: 'https://placehold.co/600x400/e0f2fe/0369a1?text=Norvine+Minoxidil'
     },
     {
       id: 2,
-      nama: 'Kerupuk Udang Sidoarjo 500 g',
-      deskripsi: 'Kerupuk udang mentah kualitas super, renyah saat digoreng. Dikemas rapat dari Surabaya.',
-      harga: 48000,
-      berat_gram: 600,
-      gambar: 'https://placehold.co/600x400/fee2e2/b91c1c?text=Kerupuk+Udang'
+      nama: 'Norvine Saw Palmetto',
+      deskripsi: 'Suplemen Saw Palmetto Norvine original. Konsumsi sesuai anjuran pada kemasan.',
+      harga: 95000,   // GANTI
+      berat_gram: 200,
+      gambar: 'https://placehold.co/600x400/dcfce7/15803d?text=Norvine+Saw+Palmetto'
     },
     {
       id: 3,
-      nama: 'Kain Batik Motif Suroboyo',
-      deskripsi: 'Batik cap motif ikon Surabaya, katun primisima 2 x 1,15 m. Adem dan tidak luntur.',
-      harga: 125000,
-      berat_gram: 300,
-      gambar: 'https://placehold.co/600x400/dbeafe/1d4ed8?text=Batik+Suroboyo'
+      nama: 'Norvine Biozinc',
+      deskripsi: 'Suplemen Biozinc Norvine original. Konsumsi sesuai anjuran pada kemasan.',
+      harga: 75000,   // GANTI
+      berat_gram: 200,
+      gambar: 'https://placehold.co/600x400/fef3c7/b45309?text=Norvine+Biozinc'
+    },
+    {
+      id: 4,
+      nama: 'Norvine Dermaroller',
+      deskripsi: 'Dermaroller Norvine original, dikemas rapat dan steril dari pabrik.',
+      harga: 65000,   // GANTI
+      berat_gram: 150,
+      gambar: 'https://placehold.co/600x400/f3e8ff/7e22ce?text=Norvine+Dermaroller'
     }
   ];
 
@@ -594,72 +607,89 @@
     return data;
   }
 
-  // Simpan pesanan ke database (Supabase atau mode demo)
-  async function buatPesanan() {
+  /* =====================================================================
+     PESAN VIA WHATSAPP (tombol utama)
+     Alurnya:
+       1. Cek isi form.
+       2. Simpan pesanan ke database (Supabase / mode demo) supaya bisa dilacak.
+       3. Langsung buka WhatsApp penjual dengan teks pesanan yang rapi.
+     Kalau penyimpanan gagal, WhatsApp TETAP dibuka (jadi order tidak hilang).
+     ===================================================================== */
+  async function pesanViaWhatsApp() {
     const form = ambilDataForm();
     if (!form) return;
+
+    // Buka tab kosong SAAT tombol diklik. Kalau tab baru dibuka belakangan
+    // (setelah menunggu database), browser sering memblokirnya sebagai pop-up.
+    const tabWA = window.open('', '_blank');
 
     const tombol = document.getElementById('btnPesan');
     tombol.disabled = true;
-    tombol.textContent = 'Menyimpan…';
+    tombol.textContent = 'Memproses…';
 
+    const pesanan = {
+      resi: buatResi(),
+      ...form,
+      produk_id: produkTerpilih.id,
+      produk_nama: produkTerpilih.nama,
+      harga: produkTerpilih.harga,
+      ongkir: ongkirSaatIni.ongkir,
+      total: produkTerpilih.harga + ongkirSaatIni.ongkir
+    };
+
+    // Simpan ke database. Gagal pun tidak apa-apa, pesanan tetap lewat WA.
+    let tersimpan = true;
     try {
       await DB.simpanPembeli(form.no_hp, form.nama);
-      const pesanan = await DB.simpanPesanan({
-        resi: buatResi(),
-        ...form,
-        produk_id: produkTerpilih.id,
-        produk_nama: produkTerpilih.nama,
-        harga: produkTerpilih.harga,
-        ongkir: ongkirSaatIni.ongkir,
-        total: produkTerpilih.harga + ongkirSaatIni.ongkir
-      });
-
-      const kotak = document.getElementById('hasilPesanan');
-      kotak.classList.remove('hidden');
-      kotak.innerHTML = `
-        <div class="font-semibold text-emerald-700">✅ Pesanan berhasil dibuat!</div>
-        <div class="mt-1">No. resi: <b class="font-mono">${pesanan.resi}</b></div>
-        <div>Total COD: <b>${rupiah(pesanan.total)}</b></div>
-        <button onclick="isiLacak('${pesanan.resi}')" class="mt-2 underline text-emerald-700">Lacak pesanan ini →</button>`;
-      tampilkanToast('Pesanan tersimpan. Simpan nomor resi Anda!');
+      await DB.simpanPesanan(pesanan);
     } catch (e) {
-      console.error(e);
-      tampilkanToast('Gagal menyimpan ke database. Gunakan tombol WhatsApp sebagai cadangan.');
-    } finally {
-      tombol.disabled = false;
-      tombol.textContent = 'Buat Pesanan COD';
+      console.error('Gagal simpan ke database:', e);
+      tersimpan = false;
     }
+
+    tampilkanHasilPesanan(pesanan, tersimpan);
+
+    // encodeURIComponent mengubah spasi, enter, emoji, dll. agar aman di URL
+    const url = `https://wa.me/${KONFIG.628999029886}?text=${encodeURIComponent(teksPesananWA(pesanan))}`;
+    if (tabWA) tabWA.location.href = url;   // isi tab yang tadi dibuka
+    else window.location.href = url;        // kalau tetap diblokir, buka di tab ini
+
+    tombol.disabled = false;
+    tombol.textContent = 'Buat Pesanan';
   }
 
-  /* =====================================================================
-     4) CADANGAN: KONFIRMASI COD VIA WHATSAPP
-     Membuka wa.me dengan teks pesanan yang sudah rapi.
-     ===================================================================== */
-  function konfirmasiViaWhatsApp() {
-    const form = ambilDataForm();
-    if (!form) return;
-
-    const total = produkTerpilih.harga + ongkirSaatIni.ongkir;
-    const teks = [
+  // Menyusun teks pesan WhatsApp dari pembeli ke penjual
+  function teksPesananWA(p) {
+    return [
       `Halo ${KONFIG.NAMA_TOKO}, saya mau pesan (COD):`,
       '',
-      `🛍️ Produk : ${produkTerpilih.nama}`,
-      `👤 Nama   : ${form.nama}`,
-      `📱 No HP  : ${form.no_hp}`,
-      `🏠 Alamat : ${form.alamat}, ${form.kota}`,
-      `🚚 Kurir  : ${form.kurir} (COD)`,
+      `🔖 No. Pesanan : ${p.resi}`,
+      `🛍️ Produk : ${p.produk_nama}`,
+      `👤 Nama   : ${p.nama}`,
+      `📱 No HP  : ${p.no_hp}`,
+      `🏠 Alamat : ${p.alamat}, ${p.kota}`,
+      `🚚 Kurir  : ${p.kurir} (COD)`,
       '',
-      `Harga  : ${rupiah(produkTerpilih.harga)}`,
-      `Ongkir : ${rupiah(ongkirSaatIni.ongkir)}`,
-      `*Total Tagihan COD : ${rupiah(total)}*`,
+      `Harga  : ${rupiah(p.harga)}`,
+      `Ongkir : ${rupiah(p.ongkir)}`,
+      `*Total Tagihan COD : ${rupiah(p.total)}*`,
       '',
       'Mohon diproses, terima kasih 🙏'
     ].join('\n');
+  }
 
-    // encodeURIComponent mengubah spasi, enter, emoji, dll. agar aman di URL
-    const url = `https://wa.me/${KONFIG.NOMOR_WA_PENJUAL}?text=${encodeURIComponent(teks)}`;
-    window.open(url, '_blank');
+  // Menampilkan kotak konfirmasi di halaman setelah tombol diklik
+  function tampilkanHasilPesanan(p, tersimpan) {
+    const kotak = document.getElementById('hasilPesanan');
+    kotak.classList.remove('hidden');
+    kotak.innerHTML = `
+      <div class="font-semibold text-emerald-700">✅ Pesanan dikirim ke WhatsApp penjual</div>
+      <div class="mt-1">No. pesanan: <b class="font-mono">${escapeHtml(p.resi)}</b></div>
+      <div>Total COD: <b>${rupiah(p.total)}</b></div>
+      <div class="mt-2 text-xs text-slate-500">Pastikan pesan di WhatsApp sudah Anda <b>kirim</b>. Penjual akan membalas konfirmasi di chat yang sama.</div>
+      ${tersimpan
+        ? `<button onclick="isiLacak('${p.resi}')" class="mt-2 underline text-emerald-700">Lacak pesanan ini →</button>`
+        : '<div class="mt-2 text-xs text-amber-700">Catatan: pesanan belum tercatat di sistem lacak.</div>'}`;
   }
 
   /* =====================================================================
@@ -794,7 +824,8 @@
 
     // Coba sambungkan ke Supabase jika URL & key sudah diisi
     const banner = document.getElementById('bannerMode');
-    if (KONFIG.SUPABASE_URL && KONFIG.SUPABASE_ANON_KEY && window.supabase) {
+    const keyTerisi = KONFIG.SUPABASE_ANON_KEY && !KONFIG.SUPABASE_ANON_KEY.startsWith('TEMPEL');
+    if (KONFIG.SUPABASE_URL && keyTerisi && window.supabase) {
       supabaseClient = window.supabase.createClient(KONFIG.SUPABASE_URL, KONFIG.SUPABASE_ANON_KEY);
       banner.textContent = '🟢 Terhubung ke database Supabase';
       banner.className = 'text-xs text-center py-1 bg-emerald-50 text-emerald-700';
