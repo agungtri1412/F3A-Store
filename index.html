@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toko Arek Suroboyo — Marketplace COD</title>
+
+  <!-- =========================================================
+       1) TAILWIND CSS via CDN (praktis untuk prototype)
+       Catatan: untuk produksi skala besar, Tailwind sebaiknya
+       di-build (npm), tapi CDN sudah cukup untuk belajar & demo.
+       ========================================================= -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- =========================================================
+       2) SUPABASE JS (CDN resmi)
+       Membuat objek global "window.supabase" yang dipakai
+       untuk terhubung ke database Supabase Anda.
+       ========================================================= -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!--
+  ==========================================================================
+  📘 INSTRUKSI SQL SUPABASE
+  ==========================================================================
+  Cara pakai:
+  1. Daftar gratis di https://supabase.com → buat project baru.
+  2. Buka menu "SQL Editor" → "New query" → tempel SEMUA SQL di bawah → Run.
+  3. Buka "Project Settings" → "API" → salin "Project URL" dan "anon public key"
+     → tempel ke objek KONFIG di bagian <script> paling bawah file ini.
+
+  ---------------------------------------------------------------------------
+  -- (b) TABEL PEMBELI: akun sederhana, dikenali lewat nomor HP
+  create table if not exists public.pembeli (
+    no_hp       text primary key,          -- format 628xxxx
+    nama        text not null,
+    created_at  timestamptz default now()
+  );
+
+  -- (a) TABEL PESANAN
+  create table if not exists public.pesanan (
+    id           bigint generated always as identity primary key,
+    resi         text unique not null,     -- nomor resi simulasi, mis. SBY12345678
+    no_hp        text not null references public.pembeli(no_hp),
+    nama         text not null,
+    alamat       text not null,
+    kota         text not null,
+    kurir        text not null,            -- 'J&T' / 'Ninja Xpress'
+    produk_id    int  not null,
+    produk_nama  text not null,
+    harga        int  not null,
+    ongkir       int  not null,
+    total        int  not null,            -- total tagihan COD
+    status       text not null default 'Dikemas'
+                 check (status in ('Dikemas','Dikirim','Selesai')),
+    created_at   timestamptz default now()
+  );
+
+  -- (c) TABEL ULASAN / REVIEW PRODUK
+  create table if not exists public.ulasan (
+    id            bigint generated always as identity primary key,
+    produk_id     int  not null,
+    pesanan_resi  text not null unique references public.pesanan(resi), -- 1 pesanan = 1 ulasan
+    nama          text not null,
+    rating        int  not null check (rating between 1 and 5),
+    komentar      text,
+    created_at    timestamptz default now()
+  );
+
+  -- KEAMANAN (Row Level Security). Wajib diaktifkan karena anon key
+  -- bisa dilihat siapa pun di kode HTML.
+  alter table public.pembeli enable row level security;
+  alter table public.pesanan enable row level security;
+  alter table public.ulasan  enable row level security;
+
+  -- ⚠️ Kebijakan di bawah SENGAJA LONGGAR khusus untuk PROTOTYPE/DEMO.
+  -- Artinya: siapa pun yang tahu URL project bisa membaca pesanan
+  -- (termasuk nama & no HP) dan mengubah status. Sebelum dipakai jualan
+  -- sungguhan, ganti dengan login (Supabase Auth) + kebijakan ketat,
+  -- dan pindahkan update status ke panel admin.
+  create policy "demo insert pembeli" on public.pembeli for insert to anon with check (true);
+  create policy "demo update pembeli" on public.pembeli for update to anon using (true);
+  create policy "demo select pembeli" on public.pembeli for select to anon using (true);
+
+  create policy "demo insert pesanan" on public.pesanan for insert to anon with check (true);
+  create policy "demo select pesanan" on public.pesanan for select to anon using (true);
+  create policy "demo update pesanan" on public.pesanan for update to anon using (true);
+
+  create policy "demo insert ulasan"  on public.ulasan  for insert to anon with check (true);
+  create policy "publik baca ulasan"  on public.ulasan  for select to anon using (true);
+  ---------------------------------------------------------------------------
+  -->
+</head>
+
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+  <!-- ===================== NAVIGASI (menempel di atas) ===================== -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <a href="#katalog" class="flex items-center gap-2 font-extrabold text-lg">
+        <span class="w-9 h-9 rounded-xl bg-emerald-600 text-white grid place-items-center">🛍️</span>
+        <span id="namaToko">Toko Arek Suroboyo</span>
+      </a>
+      <nav class="flex gap-1 text-sm font-medium">
+        <a href="#katalog" class="px-3 py-2 rounded-lg hover:bg-slate-100">Katalog</a>
+        <a href="#checkout" class="px-3 py-2 rounded-lg hover:bg-slate-100">Checkout</a>
+        <a href="#lacak" class="px-3 py-2 rounded-lg hover:bg-slate-100">Lacak</a>
+      </nav>
+    </div>
+    <!-- Indikator mode database (Supabase / Demo lokal) -->
+    <div id="bannerMode" class="text-xs text-center py-1"></div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4">
+
+    <!-- ===================== HERO ===================== -->
+    <section class="py-10 md:py-14 text-center">
+      <span class="inline-block text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">📦 Dikirim dari Surabaya • Bisa COD</span>
+      <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight">Oleh-oleh khas Suroboyo,<br class="hidden md:block" /> bayar di tempat.</h1>
+      <p class="mt-3 text-slate-500 max-w-xl mx-auto">Pilih produk, isi alamat, ongkir langsung terhitung. Bayar ke kurir saat paket sampai.</p>
+    </section>
+
+    <!-- ===================== 1. KATALOG PRODUK ===================== -->
+    <section id="katalog" class="scroll-mt-28 pb-12">
+      <h2 class="text-2xl font-bold mb-5">Katalog Produk</h2>
+      <!-- Kartu produk diisi otomatis oleh fungsi renderKatalog() -->
+      <div id="daftarProduk" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+    </section>
+
+    <!-- ===================== 2. CHECKOUT (tersembunyi sampai "Beli Sekarang") ===================== -->
+    <section id="checkout" class="scroll-mt-28 pb-12">
+      <h2 class="text-2xl font-bold mb-5">Checkout</h2>
+
+      <div id="checkoutKosong" class="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-slate-500">
+        Belum ada produk dipilih. Klik <b>"Beli Sekarang"</b> pada salah satu produk di katalog.
+      </div>
+
+      <div id="checkoutForm" class="hidden grid gap-6 lg:grid-cols-5">
+        <!-- Form data pengiriman -->
+        <form id="formPengiriman" class="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4" onsubmit="return false;">
+          <h3 class="font-semibold text-lg">Data Pengiriman</h3>
+
+          <div>
+            <label class="block text-sm font-medium mb-1" for="inNama">Nama Lengkap</label>
+            <input id="inNama" type="text" placeholder="Contoh: Budi Santoso" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1" for="inHp">Nomor WhatsApp</label>
+            <input id="inHp" type="tel" inputmode="numeric" placeholder="Contoh: 081234567890" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1" for="inAlamat">Alamat Lengkap</label>
+            <textarea id="inAlamat" rows="2" placeholder="Jalan, nomor rumah, RT/RW, kecamatan" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1" for="inKota">Kota Tujuan</label>
+            <select id="inKota" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"></select>
+          </div>
+
+          <div>
+            <span class="block text-sm font-medium mb-2">Pilih Kurir (COD)</span>
+            <div class="grid grid-cols-2 gap-3" id="pilihanKurir">
+              <label class="cursor-pointer">
+                <input type="radio" name="kurir" value="J&T" class="peer sr-only" checked />
+                <div class="rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
+                  <div class="font-semibold">J&amp;T Express</div>
+                  <div class="text-xs text-slate-500">Mendukung COD</div>
+                </div>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="kurir" value="Ninja Xpress" class="peer sr-only" />
+                <div class="rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
+                  <div class="font-semibold">Ninja Xpress</div>
+                  <div class="text-xs text-slate-500">Mendukung COD</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </form>
+
+        <!-- Ringkasan tagihan COD -->
+        <aside class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 h-fit lg:sticky lg:top-28">
+          <h3 class="font-semibold text-lg mb-3">Ringkasan Tagihan COD</h3>
+          <div id="ringkasanProduk" class="flex gap-3 items-center pb-4 border-b border-slate-100"></div>
+          <dl class="py-4 space-y-2 text-sm">
+            <div class="flex justify-between"><dt class="text-slate-500">Harga produk</dt><dd id="rHarga">-</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Ongkir <span id="rKurirInfo"></span></dt><dd id="rOngkir">-</dd></div>
+            <div class="flex justify-between text-xs text-slate-400"><dt>Estimasi tiba</dt><dd id="rEstimasi">-</dd></div>
+          </dl>
+          <div class="flex justify-between items-center border-t border-slate-100 pt-4">
+            <span class="font-semibold">Total bayar ke kurir</span>
+            <span id="rTotal" class="text-xl font-extrabold text-emerald-600">-</span>
+          </div>
+
+          <button id="btnPesan" onclick="buatPesanan()" class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition">
+            Buat Pesanan COD
+          </button>
+          <button onclick="konfirmasiViaWhatsApp()" class="mt-3 w-full bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold py-3 rounded-xl transition">
+            💬 Konfirmasi COD via WhatsApp
+          </button>
+          <p class="text-xs text-slate-400 mt-3 text-center">Tombol WhatsApp adalah jalur cadangan jika database belum terhubung.</p>
+
+          <!-- Muncul setelah pesanan berhasil dibuat -->
+          <div id="hasilPesanan" class="hidden mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===================== 3. LACAK PESANAN ===================== -->
+    <section id="lacak" class="scroll-mt-28 pb-16">
+      <h2 class="text-2xl font-bold mb-5">Lacak Pesanan Saya</h2>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input id="inLacak" type="text" placeholder="Masukkan nomor HP atau nomor resi (mis. SBY12345678)" class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <button onclick="lacakPesanan()" class="bg-slate-900 hover:bg-slate-700 text-white font-semibold px-6 py-2.5 rounded-xl">Lacak</button>
+        </div>
+        <div id="hasilLacak" class="mt-5 space-y-4"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 py-6 text-center text-sm text-slate-400">
+    © <span id="tahun"></span> Toko Arek Suroboyo — Prototype marketplace mandiri
+  </footer>
+
+  <!-- Notifikasi kecil (toast) -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg opacity-0 pointer-events-none transition-opacity z-50"></div>
+
+
+  <script>
+  /* =====================================================================
+     ⚙️ KONFIGURASI — UBAH BAGIAN INI SAJA
+     ===================================================================== */
+  const KONFIG = {
+    NAMA_TOKO: 'Toko Arek Suroboyo',
+    NOMOR_WA_PENJUAL: '6281234567890', // nomor WA Anda, format 62..., tanpa "+" atau "0" di depan
+    SUPABASE_URL: '',      // contoh: 'https://abcdefgh.supabase.co'
+    SUPABASE_ANON_KEY: '', // contoh: 'eyJhbGciOi...'
+    KOTA_ASAL: 'Surabaya'
+  };
+
+  /* =====================================================================
+     DATA PRODUK (statis). Ganti nama, harga, gambar sesuai jualan Anda.
+     berat_gram dipakai untuk simulasi ongkir.
+     ===================================================================== */
+  const PRODUK = [
+    {
+      id: 1,
+      nama: 'Sambal Bawang Khas Suroboyo',
+      deskripsi: 'Sambal bawang pedas gurih, botol 200 ml, tanpa pengawet. Cocok untuk lauk apa saja.',
+      harga: 35000,
+      berat_gram: 400,
+      gambar: 'https://placehold.co/600x400/fef3c7/b45309?text=Sambal+Bawang'
+    },
+    {
+      id: 2,
+      nama: 'Kerupuk Udang Sidoarjo 500 g',
+      deskripsi: 'Kerupuk udang mentah kualitas super, renyah saat digoreng. Dikemas rapat dari Surabaya.',
+      harga: 48000,
+      berat_gram: 600,
+      gambar: 'https://placehold.co/600x400/fee2e2/b91c1c?text=Kerupuk+Udang'
+    },
+    {
+      id: 3,
+      nama: 'Kain Batik Motif Suroboyo',
+      deskripsi: 'Batik cap motif ikon Surabaya, katun primisima 2 x 1,15 m. Adem dan tidak luntur.',
+      harga: 125000,
+      berat_gram: 300,
+      gambar: 'https://placehold.co/600x400/dbeafe/1d4ed8?text=Batik+Suroboyo'
+    }
+  ];
+
+  /* Daftar kota tujuan + tarif dasar (simulasi). Wilayah dipakai untuk menentukan tarif. */
+  const KOTA_TUJUAN = [
+    { nama: 'Surabaya',   wilayah: 'Jawa Timur' },
+    { nama: 'Sidoarjo',   wilayah: 'Jawa Timur' },
+    { nama: 'Gresik',     wilayah: 'Jawa Timur' },
+    { nama: 'Malang',     wilayah: 'Jawa Timur' },
+    { nama: 'Jember',     wilayah: 'Jawa Timur' },
+    { nama: 'Semarang',   wilayah: 'Jawa Tengah & DIY' },
+    { nama: 'Yogyakarta', wilayah: 'Jawa Tengah & DIY' },
+    { nama: 'Bandung',    wilayah: 'Jawa Barat' },
+    { nama: 'Jakarta',    wilayah: 'Jabodetabek' },
+    { nama: 'Denpasar',   wilayah: 'Bali & Nusa Tenggara' },
+    { nama: 'Medan',      wilayah: 'Sumatra' },
+    { nama: 'Makassar',   wilayah: 'Sulawesi' }
+  ];
+
+  /* Tarif dasar per wilayah (per 1 kg) dan estimasi hari kirim */
+  const TARIF_WILAYAH = {
+    'Jawa Timur':           { tarif: 8000,  hari: '1-2' },
+    'Jawa Tengah & DIY':    { tarif: 15000, hari: '2-3' },
+    'Jawa Barat':           { tarif: 20000, hari: '2-4' },
+    'Jabodetabek':          { tarif: 22000, hari: '2-3' },
+    'Bali & Nusa Tenggara': { tarif: 20000, hari: '3-4' },
+    'Sumatra':              { tarif: 35000, hari: '4-6' },
+    'Sulawesi':             { tarif: 38000, hari: '4-7' }
+  };
+
+  /* =====================================================================
+     STATE (data yang sedang aktif di halaman)
+     ===================================================================== */
+  let produkTerpilih = null;   // produk yang diklik "Beli Sekarang"
+  let ongkirSaatIni = null;    // hasil hitung ongkir terakhir {ongkir, estimasi}
+  let supabaseClient = null;   // koneksi Supabase (null = mode demo lokal)
+
+  /* =====================================================================
+     UTILITAS KECIL
+     ===================================================================== */
+
+  // Format angka menjadi "Rp35.000"
+  const rupiah = (n) => 'Rp' + Number(n || 0).toLocaleString('id-ID');
+
+  // Mengamankan teks dari pengguna sebelum ditampilkan sebagai HTML (mencegah XSS)
+  function escapeHtml(teks) {
+    return String(teks ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // Ubah "0812-3456 7890" / "+62812..." menjadi format standar "62812..."
+  function normalisasiHp(hp) {
+    let angka = String(hp || '').replace(/\D/g, '');
+    if (angka.startsWith('0')) angka = '62' + angka.slice(1);
+    if (angka.startsWith('8')) angka = '62' + angka;
+    return angka;
+  }
+
+  // Membuat nomor resi simulasi, contoh: SBY48210937
+  function buatResi() {
+    return 'SBY' + Date.now().toString().slice(-6) + Math.floor(10 + Math.random() * 90);
+  }
+
+  // Tampilkan render bintang, contoh 4 → ★★★★☆
+  const bintang = (n) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
+
+  // Notifikasi singkat di bawah layar
+  function tampilkanToast(pesan) {
+    const t = document.getElementById('toast');
+    t.textContent = pesan;
+    t.classList.remove('opacity-0');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.add('opacity-0'), 2800);
+  }
+
+  /* =====================================================================
+     LAPISAN DATABASE
+     Semua akses data lewat objek "DB". Jika Supabase sudah diisi di KONFIG,
+     data disimpan ke Supabase. Jika belum, data disimpan di localStorage
+     browser (MODE DEMO) supaya semua fitur tetap bisa dicoba.
+     ===================================================================== */
+  const lokal = {
+    ambil(kunci) { try { return JSON.parse(localStorage.getItem(kunci)) || []; } catch { return []; } },
+    simpan(kunci, data) { try { localStorage.setItem(kunci, JSON.stringify(data)); } catch {} }
+  };
+
+  const DB = {
+    // Simpan/perbarui akun pembeli (dikenali lewat no HP)
+    async simpanPembeli(no_hp, nama) {
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('pembeli').upsert({ no_hp, nama });
+        if (error) throw error;
+        return;
+      }
+      const daftar = lokal.ambil('pembeli').filter((p) => p.no_hp !== no_hp);
+      daftar.push({ no_hp, nama, created_at: new Date().toISOString() });
+      lokal.simpan('pembeli', daftar);
+    },
+
+    // Simpan pesanan baru
+    async simpanPesanan(pesanan) {
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient.from('pesanan').insert(pesanan).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const daftar = lokal.ambil('pesanan');
+      const baru = { id: Date.now(), status: 'Dikemas', created_at: new Date().toISOString(), ...pesanan };
+      daftar.push(baru);
+      lokal.simpan('pesanan', daftar);
+      return baru;
+    },
+
+    // Cari pesanan berdasarkan nomor HP ATAU nomor resi
+    async cariPesanan(kataKunci) {
+      const bersih = kataKunci.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); // buang karakter aneh
+      const hp = normalisasiHp(kataKunci);
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('pesanan').select('*')
+          .or(`no_hp.eq.${hp},resi.eq.${bersih}`)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      }
+      return lokal.ambil('pesanan')
+        .filter((p) => p.no_hp === hp || p.resi === bersih)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at));
+    },
+
+    // Ubah status pesanan (di dunia nyata ini dilakukan admin/webhook kurir)
+    async ubahStatus(resi, statusBaru) {
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('pesanan').update({ status: statusBaru }).eq('resi', resi);
+        if (error) throw error;
+        return;
+      }
+      const daftar = lokal.ambil('pesanan').map((p) => (p.resi === resi ? { ...p, status: statusBaru } : p));
+      lokal.simpan('pesanan', daftar);
+    },
+
+    // Ambil semua ulasan (untuk ditampilkan di bawah produk)
+    async ambilUlasan() {
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient.from('ulasan').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      }
+      return lokal.ambil('ulasan').sort((a, b) => b.created_at.localeCompare(a.created_at));
+    },
+
+    // Simpan ulasan baru
+    async simpanUlasan(ulasan) {
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('ulasan').insert(ulasan);
+        if (error) throw error;
+        return;
+      }
+      const daftar = lokal.ambil('ulasan');
+      daftar.push({ id: Date.now(), created_at: new Date().toISOString(), ...ulasan });
+      lokal.simpan('ulasan', daftar);
+    }
+  };
+
+  /* =====================================================================
+     SIMULASI API KIRIMINAJA
+     Fungsi ini MENIRU perilaku API ongkir (ada jeda seperti request jaringan).
+     ⚠️ Untuk API KiriminAja asli: API key itu RAHASIA, jadi JANGAN dipanggil
+     langsung dari HTML ini. Buat Vercel Serverless Function (folder /api)
+     yang memanggil KiriminAja, lalu ganti isi fungsi ini dengan
+     fetch('/api/ongkir', ...).
+     ===================================================================== */
+  function simulasiApiKiriminAja({ asal, tujuan, kurir, berat_gram }) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const kota = KOTA_TUJUAN.find((k) => k.nama === tujuan);
+        if (!kota) return reject(new Error('Kota tujuan tidak dikenal'));
+
+        const { tarif, hari } = TARIF_WILAYAH[kota.wilayah];
+        const kg = Math.max(1, Math.ceil(berat_gram / 1000));      // pembulatan ke atas per kg
+        const selisihKurir = kurir === 'Ninja Xpress' ? -1000 : 0;  // contoh: Ninja sedikit lebih murah
+
+        resolve({
+          asal, tujuan, kurir,
+          ongkir: tarif * kg + selisihKurir,
+          estimasi: hari + ' hari',
+          cod: true
+        });
+      }, 500); // jeda 0,5 detik seolah memanggil server
+    });
+  }
+
+  /* =====================================================================
+     1) KATALOG + ULASAN PER PRODUK
+     ===================================================================== */
+  async function renderKatalog() {
+    let semuaUlasan = [];
+    try { semuaUlasan = await DB.ambilUlasan(); }
+    catch (e) { console.error('Gagal mengambil ulasan:', e); }
+
+    const wadah = document.getElementById('daftarProduk');
+    wadah.innerHTML = PRODUK.map((p) => {
+      const ulasan = semuaUlasan.filter((u) => Number(u.produk_id) === p.id);
+      // Hitung rata-rata rating bintang
+      const rata = ulasan.length ? ulasan.reduce((s, u) => s + Number(u.rating), 0) / ulasan.length : 0;
+
+      const daftarUlasan = ulasan.length
+        ? ulasan.slice(0, 3).map((u) => `
+            <li class="text-sm border-t border-slate-100 pt-2">
+              <div class="flex justify-between">
+                <span class="font-medium">${escapeHtml(u.nama)}</span>
+                <span class="text-amber-500">${bintang(u.rating)}</span>
+              </div>
+              <p class="text-slate-500">${escapeHtml(u.komentar || '')}</p>
+            </li>`).join('')
+        : '<li class="text-sm text-slate-400">Belum ada ulasan.</li>';
+
+      return `
+        <article class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition">
+          <img src="${p.gambar}" alt="${escapeHtml(p.nama)}" class="w-full aspect-[3/2] object-cover" loading="lazy" />
+          <div class="p-5 flex flex-col flex-1">
+            <span class="text-xs text-emerald-700 font-semibold">📍 Dikirim dari ${KONFIG.KOTA_ASAL}</span>
+            <h3 class="mt-1 font-bold text-lg">${escapeHtml(p.nama)}</h3>
+            <div class="text-sm mt-1">
+              <span class="text-amber-500">${bintang(rata)}</span>
+              <span class="text-slate-500">${rata ? rata.toFixed(1) : '-'} (${ulasan.length} ulasan)</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-2 flex-1">${escapeHtml(p.deskripsi)}</p>
+            <div class="mt-4 flex items-center justify-between">
+              <span class="text-xl font-extrabold">${rupiah(p.harga)}</span>
+              <button onclick="pilihProduk(${p.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl">Beli Sekarang</button>
+            </div>
+            <details class="mt-4">
+              <summary class="text-sm font-medium cursor-pointer text-slate-600">Lihat ulasan</summary>
+              <ul class="mt-2 space-y-2">${daftarUlasan}</ul>
+            </details>
+          </div>
+        </article>`;
+    }).join('');
+  }
+
+  /* =====================================================================
+     2) CHECKOUT
+     ===================================================================== */
+
+  // Dipanggil saat tombol "Beli Sekarang" diklik
+  function pilihProduk(id) {
+    produkTerpilih = PRODUK.find((p) => p.id === id);
+    document.getElementById('checkoutKosong').classList.add('hidden');
+    document.getElementById('checkoutForm').classList.remove('hidden');
+    document.getElementById('hasilPesanan').classList.add('hidden');
+
+    document.getElementById('ringkasanProduk').innerHTML = `
+      <img src="${produkTerpilih.gambar}" class="w-16 h-16 rounded-lg object-cover" alt="" />
+      <div>
+        <div class="font-semibold leading-tight">${escapeHtml(produkTerpilih.nama)}</div>
+        <div class="text-sm text-slate-500">1 x ${rupiah(produkTerpilih.harga)}</div>
+      </div>`;
+
+    hitungOngkir();
+    document.getElementById('checkout').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Ambil kurir yang sedang dipilih (radio button)
+  const kurirTerpilih = () => document.querySelector('input[name="kurir"]:checked').value;
+
+  // Hitung ongkir setiap kali kota/kurir berubah, lalu perbarui ringkasan
+  async function hitungOngkir() {
+    if (!produkTerpilih) return;
+    const kota = document.getElementById('inKota').value;
+    ongkirSaatIni = null;
+
+    if (!kota) { perbaruiRingkasan(); return; }
+
+    document.getElementById('rOngkir').textContent = 'Menghitung…';
+    try {
+      ongkirSaatIni = await simulasiApiKiriminAja({
+        asal: KONFIG.KOTA_ASAL,
+        tujuan: kota,
+        kurir: kurirTerpilih(),
+        berat_gram: produkTerpilih.berat_gram
+      });
+    } catch (e) {
+      tampilkanToast('Gagal menghitung ongkir: ' + e.message);
+    }
+    perbaruiRingkasan();
+  }
+
+  // Tulis angka harga, ongkir, dan total ke panel ringkasan
+  function perbaruiRingkasan() {
+    const harga = produkTerpilih ? produkTerpilih.harga : 0;
+    document.getElementById('rHarga').textContent = rupiah(harga);
+
+    if (ongkirSaatIni) {
+      document.getElementById('rOngkir').textContent = rupiah(ongkirSaatIni.ongkir);
+      document.getElementById('rKurirInfo').textContent = `(${ongkirSaatIni.kurir})`;
+      document.getElementById('rEstimasi').textContent = ongkirSaatIni.estimasi;
+      document.getElementById('rTotal').textContent = rupiah(harga + ongkirSaatIni.ongkir);
+    } else {
+      document.getElementById('rOngkir').textContent = 'Pilih kota';
+      document.getElementById('rKurirInfo').textContent = '';
+      document.getElementById('rEstimasi').textContent = '-';
+      document.getElementById('rTotal').textContent = rupiah(harga);
+    }
+  }
+
+  // Kumpulkan & cek isi form. Mengembalikan objek data, atau null jika belum lengkap.
+  function ambilDataForm() {
+    const data = {
+      nama: document.getElementById('inNama').value.trim(),
+      no_hp: normalisasiHp(document.getElementById('inHp').value),
+      alamat: document.getElementById('inAlamat').value.trim(),
+      kota: document.getElementById('inKota').value,
+      kurir: kurirTerpilih()
+    };
+    if (!produkTerpilih) { tampilkanToast('Pilih produk dulu.'); return null; }
+    if (!data.nama) { tampilkanToast('Nama wajib diisi.'); return null; }
+    if (data.no_hp.length < 10) { tampilkanToast('Nomor WhatsApp belum valid.'); return null; }
+    if (!data.alamat) { tampilkanToast('Alamat wajib diisi.'); return null; }
+    if (!data.kota || !ongkirSaatIni) { tampilkanToast('Pilih kota tujuan dulu.'); return null; }
+    return data;
+  }
+
+  // Simpan pesanan ke database (Supabase atau mode demo)
+  async function buatPesanan() {
+    const form = ambilDataForm();
+    if (!form) return;
+
+    const tombol = document.getElementById('btnPesan');
+    tombol.disabled = true;
+    tombol.textContent = 'Menyimpan…';
+
+    try {
+      await DB.simpanPembeli(form.no_hp, form.nama);
+      const pesanan = await DB.simpanPesanan({
+        resi: buatResi(),
+        ...form,
+        produk_id: produkTerpilih.id,
+        produk_nama: produkTerpilih.nama,
+        harga: produkTerpilih.harga,
+        ongkir: ongkirSaatIni.ongkir,
+        total: produkTerpilih.harga + ongkirSaatIni.ongkir
+      });
+
+      const kotak = document.getElementById('hasilPesanan');
+      kotak.classList.remove('hidden');
+      kotak.innerHTML = `
+        <div class="font-semibold text-emerald-700">✅ Pesanan berhasil dibuat!</div>
+        <div class="mt-1">No. resi: <b class="font-mono">${pesanan.resi}</b></div>
+        <div>Total COD: <b>${rupiah(pesanan.total)}</b></div>
+        <button onclick="isiLacak('${pesanan.resi}')" class="mt-2 underline text-emerald-700">Lacak pesanan ini →</button>`;
+      tampilkanToast('Pesanan tersimpan. Simpan nomor resi Anda!');
+    } catch (e) {
+      console.error(e);
+      tampilkanToast('Gagal menyimpan ke database. Gunakan tombol WhatsApp sebagai cadangan.');
+    } finally {
+      tombol.disabled = false;
+      tombol.textContent = 'Buat Pesanan COD';
+    }
+  }
+
+  /* =====================================================================
+     4) CADANGAN: KONFIRMASI COD VIA WHATSAPP
+     Membuka wa.me dengan teks pesanan yang sudah rapi.
+     ===================================================================== */
+  function konfirmasiViaWhatsApp() {
+    const form = ambilDataForm();
+    if (!form) return;
+
+    const total = produkTerpilih.harga + ongkirSaatIni.ongkir;
+    const teks = [
+      `Halo ${KONFIG.NAMA_TOKO}, saya mau pesan (COD):`,
+      '',
+      `🛍️ Produk : ${produkTerpilih.nama}`,
+      `👤 Nama   : ${form.nama}`,
+      `📱 No HP  : ${form.no_hp}`,
+      `🏠 Alamat : ${form.alamat}, ${form.kota}`,
+      `🚚 Kurir  : ${form.kurir} (COD)`,
+      '',
+      `Harga  : ${rupiah(produkTerpilih.harga)}`,
+      `Ongkir : ${rupiah(ongkirSaatIni.ongkir)}`,
+      `*Total Tagihan COD : ${rupiah(total)}*`,
+      '',
+      'Mohon diproses, terima kasih 🙏'
+    ].join('\n');
+
+    // encodeURIComponent mengubah spasi, enter, emoji, dll. agar aman di URL
+    const url = `https://wa.me/${KONFIG.NOMOR_WA_PENJUAL}?text=${encodeURIComponent(teks)}`;
+    window.open(url, '_blank');
+  }
+
+  /* =====================================================================
+     3) LACAK PESANAN + FORM REVIEW
+     ===================================================================== */
+  const URUTAN_STATUS = ['Dikemas', 'Dikirim', 'Selesai'];
+
+  // Isi kolom lacak dari tombol "Lacak pesanan ini", lalu langsung cari
+  function isiLacak(resi) {
+    document.getElementById('inLacak').value = resi;
+    document.getElementById('lacak').scrollIntoView({ behavior: 'smooth' });
+    lacakPesanan();
+  }
+
+  async function lacakPesanan() {
+    const kataKunci = document.getElementById('inLacak').value;
+    const wadah = document.getElementById('hasilLacak');
+    if (!kataKunci.trim()) { tampilkanToast('Masukkan nomor HP atau resi.'); return; }
+
+    wadah.innerHTML = '<p class="text-slate-400 text-sm">Mencari…</p>';
+    try {
+      const daftar = await DB.cariPesanan(kataKunci);
+      if (!daftar.length) {
+        wadah.innerHTML = '<p class="text-slate-500 text-sm">Pesanan tidak ditemukan. Periksa kembali nomor HP/resi.</p>';
+        return;
+      }
+      // Cek pesanan mana saja yang sudah diulas, supaya form review tidak muncul dua kali
+      const ulasan = await DB.ambilUlasan();
+      const sudahDiulas = new Set(ulasan.map((u) => u.pesanan_resi));
+      wadah.innerHTML = daftar.map((p) => kartuPesanan(p, sudahDiulas.has(p.resi))).join('');
+    } catch (e) {
+      console.error(e);
+      wadah.innerHTML = '<p class="text-red-500 text-sm">Terjadi kesalahan saat mengambil data.</p>';
+    }
+  }
+
+  // Membuat tampilan satu kartu pesanan, lengkap dengan progres status
+  function kartuPesanan(p, sudahDiulas) {
+    const idx = URUTAN_STATUS.indexOf(p.status);
+    const langkah = URUTAN_STATUS.map((s, i) => `
+      <div class="flex-1 text-center">
+        <div class="mx-auto w-8 h-8 rounded-full grid place-items-center text-sm font-bold ${i <= idx ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">${i + 1}</div>
+        <div class="text-xs mt-1 ${i <= idx ? 'text-emerald-700 font-semibold' : 'text-slate-400'}">${s}</div>
+      </div>`).join('<div class="flex-1 h-0.5 bg-slate-200 mt-4"></div>');
+
+    let bagianBawah = '';
+    if (p.status !== 'Selesai') {
+      bagianBawah = `
+        <button onclick="majukanStatus('${p.resi}', '${p.status}')" class="mt-4 text-sm bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg">
+          🧪 Simulasi: ubah ke "${URUTAN_STATUS[idx + 1]}"
+        </button>`;
+    } else if (!sudahDiulas) {
+      bagianBawah = formReview(p);
+    } else {
+      bagianBawah = '<p class="mt-4 text-sm text-emerald-700">⭐ Terima kasih, ulasan Anda sudah tersimpan.</p>';
+    }
+
+    return `
+      <div class="rounded-xl border border-slate-200 p-4">
+        <div class="flex flex-wrap justify-between gap-2 text-sm">
+          <div><span class="text-slate-500">Resi</span> <b class="font-mono">${escapeHtml(p.resi)}</b></div>
+          <div class="text-slate-500">${escapeHtml(p.kurir)} • ${escapeHtml(p.kota)}</div>
+        </div>
+        <div class="mt-1 font-semibold">${escapeHtml(p.produk_nama)}</div>
+        <div class="text-sm text-slate-500">Total COD ${rupiah(p.total)}</div>
+        <div class="flex items-start mt-4">${langkah}</div>
+        ${bagianBawah}
+      </div>`;
+  }
+
+  // Simulasi perubahan status (di aplikasi nyata dilakukan admin / update dari kurir)
+  async function majukanStatus(resi, statusSekarang) {
+    const berikutnya = URUTAN_STATUS[URUTAN_STATUS.indexOf(statusSekarang) + 1];
+    if (!berikutnya) return;
+    try {
+      await DB.ubahStatus(resi, berikutnya);
+      tampilkanToast(`Status diubah ke "${berikutnya}"`);
+      lacakPesanan();
+    } catch (e) {
+      console.error(e);
+      tampilkanToast('Gagal mengubah status.');
+    }
+  }
+
+  // HTML form ulasan (bintang 1-5 + komentar) untuk pesanan yang sudah Selesai
+  function formReview(p) {
+    const tombolBintang = [1, 2, 3, 4, 5].map((n) => `
+      <button type="button" data-nilai="${n}" onclick="pilihBintang('${p.resi}', ${n})" class="bintang-${p.resi} text-3xl text-slate-300 hover:scale-110 transition">★</button>`).join('');
+    return `
+      <div class="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4">
+        <div class="font-semibold text-sm">Pesanan selesai! Beri ulasan:</div>
+        <div class="flex gap-1 mt-1">${tombolBintang}</div>
+        <input type="hidden" id="rating-${p.resi}" value="0" />
+        <textarea id="komentar-${p.resi}" rows="2" placeholder="Ceritakan pengalaman Anda…" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
+        <button onclick="kirimUlasan('${p.resi}', ${p.produk_id}, '${escapeHtml(p.nama).replace(/'/g, '&#39;')}')" class="mt-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">Kirim Ulasan</button>
+      </div>`;
+  }
+
+  // Mewarnai bintang sesuai pilihan pengguna
+  function pilihBintang(resi, nilai) {
+    document.getElementById('rating-' + resi).value = nilai;
+    document.querySelectorAll('.bintang-' + resi).forEach((b) => {
+      const aktif = Number(b.dataset.nilai) <= nilai;
+      b.classList.toggle('text-amber-400', aktif);
+      b.classList.toggle('text-slate-300', !aktif);
+    });
+  }
+
+  // Simpan ulasan, lalu muat ulang katalog agar rata-rata rating ikut berubah
+  async function kirimUlasan(resi, produkId, nama) {
+    const rating = Number(document.getElementById('rating-' + resi).value);
+    const komentar = document.getElementById('komentar-' + resi).value.trim();
+    if (rating < 1) { tampilkanToast('Pilih rating bintang dulu.'); return; }
+
+    try {
+      await DB.simpanUlasan({ produk_id: produkId, pesanan_resi: resi, nama, rating, komentar });
+      tampilkanToast('Terima kasih atas ulasannya!');
+      await renderKatalog();
+      lacakPesanan();
+    } catch (e) {
+      console.error(e);
+      tampilkanToast('Gagal mengirim ulasan.');
+    }
+  }
+
+  /* =====================================================================
+     INISIALISASI — dijalankan sekali saat halaman dibuka
+     ===================================================================== */
+  function init() {
+    document.getElementById('namaToko').textContent = KONFIG.NAMA_TOKO;
+    document.getElementById('tahun').textContent = new Date().getFullYear();
+
+    // Coba sambungkan ke Supabase jika URL & key sudah diisi
+    const banner = document.getElementById('bannerMode');
+    if (KONFIG.SUPABASE_URL && KONFIG.SUPABASE_ANON_KEY && window.supabase) {
+      supabaseClient = window.supabase.createClient(KONFIG.SUPABASE_URL, KONFIG.SUPABASE_ANON_KEY);
+      banner.textContent = '🟢 Terhubung ke database Supabase';
+      banner.className = 'text-xs text-center py-1 bg-emerald-50 text-emerald-700';
+    } else {
+      banner.textContent = '🟡 Mode demo: data disimpan di browser ini saja (isi KONFIG Supabase untuk database asli)';
+      banner.className = 'text-xs text-center py-1 bg-amber-50 text-amber-700';
+    }
+
+    // Isi dropdown kota tujuan
+    const select = document.getElementById('inKota');
+    select.innerHTML = '<option value="">— Pilih kota tujuan —</option>' +
+      KOTA_TUJUAN.map((k) => `<option value="${k.nama}">${k.nama} (${k.wilayah})</option>`).join('');
+
+    // Ongkir otomatis dihitung ulang saat kota atau kurir berubah
+    select.addEventListener('change', hitungOngkir);
+    document.querySelectorAll('input[name="kurir"]').forEach((r) => r.addEventListener('change', hitungOngkir));
+
+    // Tekan Enter di kolom lacak = klik tombol Lacak
+    document.getElementById('inLacak').addEventListener('keydown', (e) => { if (e.key === 'Enter') lacakPesanan(); });
+
+    renderKatalog();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
