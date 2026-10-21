@@ -855,6 +855,43 @@
     pengaturanData.pembayaran.transfer.rekening = pengaturanData.pembayaran.transfer.rekening || [];
     pengaturanData.free_ongkir_non_cod = Object.assign({ aktif: false, maks: 0, min_belanja: 0 }, pengaturanData.free_ongkir_non_cod);
     pengaturanData.kurir = pengaturanData.kurir || [];
+    pengaturanData.ongkir_mode = pengaturanData.ongkir_mode || 'simulasi';
+    pengaturanData.asal = Object.assign({ nama: CFG.NAMA_TOKO, hp: '', alamat: '', kecamatan_id: null, kecamatan: '' }, pengaturanData.asal);
+  }
+
+  // Kode kurir yang dikenali KiriminAja
+  const KODE_KURIR = [
+    ['jnt', 'J&T'], ['jne', 'JNE'], ['sicepat', 'SiCepat'], ['anteraja', 'AnterAja'], ['ninja', 'Ninja Xpress'],
+    ['idx', 'ID Express'], ['sap', 'SAP Express'], ['lion', 'Lion Parcel'], ['posindonesia', 'POS Indonesia'],
+    ['tiki', 'TIKI'], ['spx', 'SPX'], ['paxel', 'Paxel'], ['rpx', 'RPX'], ['ncs', 'NCS'], ['sentral', 'Sentral Cargo'], ['jtcargo', 'J&T Cargo']
+  ];
+
+  // Cari kecamatan alamat pengirim (lewat /api/ongkir → KiriminAja)
+  let timerAsal = null;
+  let hasilAsal = [];
+  function cariAsal(q) {
+    const saran = document.getElementById('saranAsal');
+    clearTimeout(timerAsal);
+    if (q.trim().length < 3) { saran.classList.add('hidden'); return; }
+    timerAsal = setTimeout(async () => {
+      saran.innerHTML = '<div class="px-3 py-2 text-sm text-slate-500">Mencari…</div>';
+      saran.classList.remove('hidden');
+      try {
+        const r = await (await fetch('/api/ongkir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aksi: 'cari', q: q.trim() }) })).json();
+        hasilAsal = (r && r.data) || [];
+        saran.innerHTML = hasilAsal.length
+          ? hasilAsal.map((d, i) => `<button type="button" onclick="pilihAsal(${i})" class="block w-full text-left px-3 py-2 text-sm hover:bg-slate-100">${escapeHtml(d.text)}</button>`).join('')
+          : '<div class="px-3 py-2 text-sm text-slate-500">Tidak ditemukan.</div>';
+      } catch (e) {
+        saran.innerHTML = '<div class="px-3 py-2 text-sm text-red-600">Gagal mencari. Pastikan api/ongkir.js & API key KiriminAja sudah terpasang.</div>';
+      }
+    }, 400);
+  }
+  function pilihAsal(i) {
+    bacaFormPengaturan();
+    pengaturanData.asal.kecamatan_id = hasilAsal[i].id;
+    pengaturanData.asal.kecamatan = hasilAsal[i].text;
+    renderPengaturan();
   }
 
   const kotak = (judul, isi, ket = '') => `
@@ -882,9 +919,13 @@
     const kurir = s.kurir.map((k, i) => `
       <div class="grid grid-cols-12 gap-2 items-center py-2 border-t border-slate-100">
         <label class="col-span-2 flex items-center gap-1 text-xs"><input data-kur="${i}" data-f="aktif" type="checkbox" class="w-4 h-4" ${k.aktif ? 'checked' : ''} /> Aktif</label>
-        <input data-kur="${i}" data-f="nama" value="${escapeHtml(k.nama)}" class="col-span-4 ${inputKelas}" />
+        <input data-kur="${i}" data-f="nama" value="${escapeHtml(k.nama)}" class="col-span-3 ${inputKelas}" />
+        <select data-kur="${i}" data-f="kode" class="col-span-2 ${inputKelas} bg-white px-1">
+          <option value="">— kode —</option>
+          ${KODE_KURIR.map(([kd, nm]) => `<option value="${kd}" ${k.kode === kd ? 'selected' : ''}>${kd}</option>`).join('')}
+        </select>
         <label class="col-span-2 flex items-center gap-1 text-xs"><input data-kur="${i}" data-f="cod" type="checkbox" class="w-4 h-4" ${k.cod ? 'checked' : ''} /> COD</label>
-        <input data-kur="${i}" data-f="selisih" type="number" step="500" value="${Number(k.selisih || 0)}" title="Selisih ongkir simulasi (Rp)" class="col-span-3 ${inputKelas}" />
+        <input data-kur="${i}" data-f="selisih" type="number" step="500" value="${Number(k.selisih || 0)}" title="Selisih ongkir (hanya mode Simulasi)" class="col-span-2 ${inputKelas}" />
         <button type="button" onclick="ubahDaftar('kurir', ${i})" class="col-span-1 text-red-600 text-lg" title="Hapus">✕</button>
       </div>`).join('');
 
@@ -935,13 +976,39 @@
               <p class="text-xs text-slate-400 mt-1">0 = tanpa minimal</p></div>
           </div>
         </div>`, 'Ingat: ongkir yang digratiskan tetap kamu yang bayar ke ekspedisi.') +
+      kotak('📍 Pengiriman & Alamat Pengirim', `
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium mb-1" for="pMode">Sumber ongkir</label>
+            <select id="pMode" class="${inputKelas} bg-white">
+              <option value="kiriminaja" ${s.ongkir_mode === 'kiriminaja' ? 'selected' : ''}>KiriminAja (ongkir asli)</option>
+              <option value="simulasi" ${s.ongkir_mode !== 'kiriminaja' ? 'selected' : ''}>Simulasi (perkiraan)</option>
+            </select>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div><label class="block text-xs font-medium mb-1" for="pAsalNama">Nama pengirim</label>
+              <input id="pAsalNama" value="${escapeHtml(s.asal.nama)}" class="${inputKelas}" /></div>
+            <div><label class="block text-xs font-medium mb-1" for="pAsalHp">No. HP pengirim</label>
+              <input id="pAsalHp" value="${escapeHtml(s.asal.hp)}" inputmode="numeric" class="${inputKelas}" /></div>
+          </div>
+          <div><label class="block text-xs font-medium mb-1" for="pAsalAlamat">Alamat lengkap pickup (jalan, nomor, RT/RW)</label>
+            <textarea id="pAsalAlamat" rows="2" class="${inputKelas}">${escapeHtml(s.asal.alamat)}</textarea></div>
+          <div class="relative">
+            <label class="block text-xs font-medium mb-1" for="pAsalCari">Kecamatan pengirim</label>
+            <div class="text-sm mb-2 ${s.asal.kecamatan_id ? 'text-emerald-700 font-semibold' : 'text-amber-700'}">
+              ${s.asal.kecamatan_id ? '✓ ' + escapeHtml(s.asal.kecamatan) : 'Belum dipilih — cari lalu klik kecamatanmu'}
+            </div>
+            <input id="pAsalCari" oninput="cariAsal(this.value)" autocomplete="off" placeholder="Ketik nama kecamatan, mis. Bulak" class="${inputKelas}" />
+            <div id="saranAsal" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border rounded-xl shadow-lg max-h-56 overflow-y-auto"></div>
+          </div>
+        </div>`, 'Ongkir dihitung dari kecamatan ini ke kecamatan pembeli. Alamat lengkap dipakai saat request pickup.') +
       kotak('📦 Kurir', `
         <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 font-medium pb-1">
-          <span class="col-span-2"></span><span class="col-span-4">Nama kurir</span><span class="col-span-2">Layanan</span><span class="col-span-3">Selisih ongkir (Rp)</span>
+          <span class="col-span-2"></span><span class="col-span-3">Nama kurir</span><span class="col-span-2">Kode</span><span class="col-span-2">Layanan</span><span class="col-span-2">Selisih (simulasi)</span>
         </div>
         ${kurir}
         <button type="button" onclick="ubahDaftar('kurir')" class="mt-2 text-sm font-semibold text-emerald-700">+ Tambah kurir</button>`,
-        'Centang COD hanya untuk kurir yang benar-benar melayani COD. "Selisih ongkir" dipakai untuk simulasi ongkir sampai KiriminAja tersambung.');
+        'Hanya kurir yang Aktif yang ditawarkan ke pembeli. Mode KiriminAja: status COD diambil dari KiriminAja, dan centang COD di sini untuk mengizinkan/melarang COD per kurir. "Selisih" hanya dipakai di mode Simulasi.');
   }
 
   // Baca isi form pengaturan ke pengaturanData (dipanggil sebelum simpan / ubah daftar)
@@ -955,6 +1022,10 @@
     s.free_ongkir_non_cod.aktif = cek('pFoAktif');
     s.free_ongkir_non_cod.maks = parseInt(document.getElementById('pFoMaks').value, 10) || 0;
     s.free_ongkir_non_cod.min_belanja = parseInt(document.getElementById('pFoMin').value, 10) || 0;
+    s.ongkir_mode = document.getElementById('pMode').value;
+    s.asal.nama = document.getElementById('pAsalNama').value.trim();
+    s.asal.hp = document.getElementById('pAsalHp').value.replace(/\D/g, '').replace(/^0/, '62');
+    s.asal.alamat = document.getElementById('pAsalAlamat').value.trim();
     document.querySelectorAll('[data-kur]').forEach((el) => {
       const k = s.kurir[el.dataset.kur];
       if (el.type === 'checkbox') k[el.dataset.f] = el.checked;
@@ -967,7 +1038,7 @@
   function ubahDaftar(jenis, idxHapus) {
     bacaFormPengaturan();
     const daftar = jenis === 'rekening' ? pengaturanData.pembayaran.transfer.rekening : pengaturanData.kurir;
-    if (idxHapus === undefined) daftar.push(jenis === 'rekening' ? { bank: '', nomor: '', atas_nama: '' } : { nama: '', aktif: true, cod: false, selisih: 0 });
+    if (idxHapus === undefined) daftar.push(jenis === 'rekening' ? { bank: '', nomor: '', atas_nama: '' } : { nama: '', kode: '', aktif: true, cod: false, selisih: 0 });
     else daftar.splice(idxHapus, 1);
     renderPengaturan();
   }
@@ -1026,6 +1097,11 @@
     s.kurir = s.kurir.filter((k) => k.nama);
     if (!s.kurir.some((k) => k.aktif)) { tampilkanToast('Minimal satu kurir harus aktif.'); return; }
     if (b.cod.aktif && !s.kurir.some((k) => k.aktif && k.cod)) { tampilkanToast('COD aktif, tapi belum ada kurir aktif yang bisa COD.'); return; }
+    if (s.ongkir_mode === 'kiriminaja') {
+      if (!s.asal.kecamatan_id) { tampilkanToast('Pilih kecamatan pengirim dulu sebelum memakai ongkir KiriminAja.'); return; }
+      const tanpaKode = s.kurir.find((k) => k.aktif && !k.kode);
+      if (tanpaKode) { tampilkanToast(`Kurir "${tanpaKode.nama}" belum punya kode KiriminAja.`); return; }
+    }
 
     const tombol = document.getElementById('btnSimpanPengaturan');
     tombol.disabled = true;

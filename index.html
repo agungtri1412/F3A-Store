@@ -255,8 +255,12 @@
               <textarea id="inAlamat" rows="2" placeholder="Jalan, nomor rumah, RT/RW, kecamatan" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
             </div>
             <div>
-              <label class="block text-sm font-medium mb-1" for="inKota">Kota Tujuan</label>
-              <select id="inKota" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></select>
+              <div class="relative">
+                <label class="block text-sm font-medium mb-1" for="inKecamatan">Kecamatan Tujuan</label>
+                <input id="inKecamatan" type="text" autocomplete="off" placeholder="Ketik nama kecamatan, mis. Tambaksari" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brass" />
+                <div id="saranKecamatan" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-ink/10 rounded-xl shadow-lg max-h-64 overflow-y-auto"></div>
+                <p class="text-xs text-ink/40 mt-1">Ketik minimal 3 huruf, lalu pilih dari daftar.</p>
+              </div>
             </div>
           </div>
           <div class="bg-white rounded-2xl border border-ink/10 p-5">
@@ -265,7 +269,7 @@
           </div>
           <div class="bg-white rounded-2xl border border-ink/10 p-5">
             <h3 class="font-semibold text-lg mb-3">3. Pilih Kurir</h3>
-            <div id="pilihanKurir" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+            <div id="pilihanKurir" class="grid sm:grid-cols-2 gap-3"></div>
           </div>
         </form>
 
@@ -359,21 +363,14 @@
     { id: 4, nama: 'Norvine Dermaroller',  harga: 65000, berat_gram: 150, foto: [], deskripsi: 'Dermaroller Norvine original.' }
   ];
 
-  /* Kota tujuan & tarif simulasi ongkir (nanti diganti API KiriminAja) */
-  const KOTA_TUJUAN = [
-    { nama: 'Surabaya', wilayah: 'Jawa Timur' }, { nama: 'Sidoarjo', wilayah: 'Jawa Timur' },
-    { nama: 'Gresik', wilayah: 'Jawa Timur' }, { nama: 'Malang', wilayah: 'Jawa Timur' },
-    { nama: 'Jember', wilayah: 'Jawa Timur' }, { nama: 'Semarang', wilayah: 'Jawa Tengah & DIY' },
-    { nama: 'Yogyakarta', wilayah: 'Jawa Tengah & DIY' }, { nama: 'Bandung', wilayah: 'Jawa Barat' },
-    { nama: 'Jakarta', wilayah: 'Jabodetabek' }, { nama: 'Denpasar', wilayah: 'Bali & Nusa Tenggara' },
-    { nama: 'Medan', wilayah: 'Sumatra' }, { nama: 'Makassar', wilayah: 'Sulawesi' }
+  /* Tarif SIMULASI per provinsi — hanya dipakai kalau mode ongkir di admin = "Simulasi".
+     Mode "KiriminAja" memakai ongkir asli lewat /api/ongkir. */
+  const TARIF_PROVINSI = [
+    [/jawa timur/i, 8000, '1-2'], [/jawa tengah|yogyakarta/i, 15000, '2-3'], [/jakarta/i, 22000, '2-3'],
+    [/jawa barat|banten/i, 20000, '2-4'], [/bali|nusa tenggara/i, 20000, '3-4'],
+    [/aceh|sumatera|riau|jambi|bengkulu|lampung|bangka/i, 35000, '4-6'],
+    [/kalimantan|sulawesi|gorontalo/i, 38000, '4-7'], [/maluku|papua/i, 60000, '5-9']
   ];
-  const TARIF_WILAYAH = {
-    'Jawa Timur': { tarif: 8000, hari: '1-2' }, 'Jawa Tengah & DIY': { tarif: 15000, hari: '2-3' },
-    'Jawa Barat': { tarif: 20000, hari: '2-4' }, 'Jabodetabek': { tarif: 22000, hari: '2-3' },
-    'Bali & Nusa Tenggara': { tarif: 20000, hari: '3-4' }, 'Sumatra': { tarif: 35000, hari: '4-6' },
-    'Sulawesi': { tarif: 38000, hari: '4-7' }
-  };
   const NAMA_METODE = { COD: 'COD (Bayar di Tempat)', Transfer: 'Transfer Bank', QRIS: 'QRIS' };
 
   /* =====================================================================
@@ -385,7 +382,8 @@
   let semuaUlasan = [];
   let detailAktif = null;
   let hasilLacak = {};
-  const keranjang = { produk: null, jumlah: 1, metode: 'COD', kurir: null, ongkir: null, voucher: null };
+  // tujuan = kecamatan terpilih; layanan = pilihan kurir+ongkir; pilihan = layanan yang dipilih
+  const keranjang = { produk: null, jumlah: 1, metode: 'COD', tujuan: null, layanan: [], pilihan: null, statusKurir: '', voucher: null };
 
   /* =====================================================================
      ALAT BANTU KECIL
@@ -694,66 +692,133 @@
 
   function gantiMetode(m) {
     keranjang.metode = m;
-    renderPilihanKurir();
+    renderPilihanKurir();   // layanan non-COD jadi bisa / tidak bisa dipilih
+    perbaruiRingkasan();
+  }
+
+  /* ---------- Cari kecamatan (lewat /api/ongkir → KiriminAja) ---------- */
+  let timerCari = null;
+  let hasilCariKec = [];
+  async function panggilOngkir(body) {
+    const r = await fetch('/api/ongkir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return r.json();
+  }
+
+  function ketikKecamatan() {
+    const q = document.getElementById('inKecamatan').value.trim();
+    const saran = document.getElementById('saranKecamatan');
+    if (keranjang.tujuan) {   // ketik ulang = pilihan lama dibatalkan
+      keranjang.tujuan = null; keranjang.layanan = []; keranjang.pilihan = null; keranjang.statusKurir = '';
+      renderPilihanKurir(); perbaruiRingkasan();
+    }
+    clearTimeout(timerCari);
+    if (q.length < 3) { saran.classList.add('hidden'); return; }
+    timerCari = setTimeout(async () => {
+      saran.innerHTML = '<div class="px-3 py-2 text-sm text-ink/50">Mencari…</div>';
+      saran.classList.remove('hidden');
+      try {
+        const r = await panggilOngkir({ aksi: 'cari', q });
+        if (document.getElementById('inKecamatan').value.trim() !== q) return;   // sudah diketik ulang
+        hasilCariKec = (r && r.data) || [];
+        saran.innerHTML = hasilCariKec.length
+          ? hasilCariKec.map((d, i) => `<button type="button" onclick="pilihKecamatan(${i})" class="block w-full text-left px-3 py-2 text-sm hover:bg-sand border-b border-ink/5 last:border-0">${escapeHtml(d.text)}</button>`).join('')
+          : '<div class="px-3 py-2 text-sm text-ink/50">Kecamatan tidak ditemukan. Coba ejaan lain.</div>';
+      } catch (e) {
+        saran.innerHTML = '<div class="px-3 py-2 text-sm text-red-600">Gagal mencari. Periksa koneksi lalu coba lagi.</div>';
+      }
+    }, 400);
+  }
+
+  function pilihKecamatan(i) {
+    keranjang.tujuan = hasilCariKec[i];
+    document.getElementById('inKecamatan').value = keranjang.tujuan.text;
+    document.getElementById('saranKecamatan').classList.add('hidden');
     hitungOngkir();
   }
 
+  /* ---------- Pilihan kurir & ongkir ---------- */
+  const modeKiriminAja = () => pengaturan.ongkir_mode === 'kiriminaja' && pengaturan.asal && pengaturan.asal.kecamatan_id;
+  const kurirAdmin = (kode) => kurirAktif().find((k) => k.kode === kode) || {};
+  // Layanan boleh COD kalau KiriminAja bilang bisa DAN admin mengizinkan COD untuk kurir itu
+  const bolehCod = (l) => l.cod === 1 && (l.simulasi || !!kurirAdmin(l.kode).cod);
+
   function renderPilihanKurir() {
-    const daftar = kurirAktif();
-    const bisaDipilih = (k) => keranjang.metode !== 'COD' || k.cod;
-    if (!keranjang.kurir || !daftar.some((k) => k.nama === keranjang.kurir && bisaDipilih(k))) {
-      keranjang.kurir = (daftar.find(bisaDipilih) || {}).nama || null;
-    }
-    document.getElementById('pilihanKurir').innerHTML = daftar.map((k) => {
-      const boleh = bisaDipilih(k);
+    const wadah = document.getElementById('pilihanKurir');
+    const info = (teks, merah) => `<p class="sm:col-span-2 text-sm ${merah ? 'text-red-600' : 'text-ink/50'}">${teks}</p>`;
+    if (!keranjang.tujuan) { wadah.innerHTML = info('Pilih kecamatan tujuan dulu untuk melihat pilihan kurir &amp; ongkir.'); return; }
+    if (keranjang.statusKurir) { wadah.innerHTML = info(escapeHtml(keranjang.statusKurir), /gagal/i.test(keranjang.statusKurir)); return; }
+    if (!keranjang.layanan.length) { wadah.innerHTML = info('Belum ada kurir yang melayani kecamatan ini.'); return; }
+
+    const bisa = (l) => keranjang.metode !== 'COD' || bolehCod(l);
+    if (!keranjang.pilihan || !bisa(keranjang.pilihan)) keranjang.pilihan = keranjang.layanan.find(bisa) || null;
+    const peringatan = keranjang.metode === 'COD' && !keranjang.layanan.some(bisa)
+      ? info('Tidak ada layanan COD ke kecamatan ini. Silakan pilih Transfer / QRIS.', true) : '';
+
+    wadah.innerHTML = peringatan + keranjang.layanan.map((l, i) => {
+      const boleh = bisa(l);
       return `
         <label class="${boleh ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}">
-          <input type="radio" name="kurir" value="${escapeHtml(k.nama)}" class="peer sr-only" ${k.nama === keranjang.kurir ? 'checked' : ''} ${boleh ? '' : 'disabled'} />
-          <div class="${kelasPilihan}">
-            <div class="font-semibold">${escapeHtml(k.nama)}</div>
-            <div class="text-xs text-ink/50">${k.cod ? 'Bisa COD' : 'Tidak bisa COD'}</div>
+          <input type="radio" name="kurir" value="${i}" class="peer sr-only" ${l === keranjang.pilihan ? 'checked' : ''} ${boleh ? '' : 'disabled'} onchange="pilihLayanan(${i})" />
+          <div class="${kelasPilihan} flex justify-between gap-3">
+            <div>
+              <div class="font-semibold">${escapeHtml(l.nama)}</div>
+              <div class="text-xs text-ink/50">${l.etd ? escapeHtml(l.etd) + ' hari · ' : ''}${bolehCod(l) ? 'Bisa COD' : 'Tidak bisa COD'}</div>
+            </div>
+            <div class="font-bold whitespace-nowrap">${rupiah(l.ongkir)}</div>
           </div>
         </label>`;
     }).join('');
-    document.querySelectorAll('input[name="kurir"]').forEach((r) =>
-      r.addEventListener('change', () => { keranjang.kurir = r.value; hitungOngkir(); }));
   }
 
-  /* Simulasi API KiriminAja. API key asli itu RAHASIA → nanti dipanggil lewat
-     Vercel Function (/api/ongkir), bukan langsung dari halaman ini. */
-  function simulasiApiKiriminAja({ tujuan, kurir, berat_gram }) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const kota = KOTA_TUJUAN.find((k) => k.nama === tujuan);
-        if (!kota) return reject(new Error('Kota tujuan tidak dikenal'));
-        const { tarif, hari } = TARIF_WILAYAH[kota.wilayah];
-        const kg = Math.max(1, Math.ceil((berat_gram || 200) / 1000));
-        const k = kurirAktif().find((x) => x.nama === kurir) || {};
-        resolve({ ongkir: Math.max(0, tarif * kg + Number(k.selisih || 0)), estimasi: hari + ' hari' });
-      }, 300);
-    });
+  function pilihLayanan(i) {
+    keranjang.pilihan = keranjang.layanan[i];
+    perbaruiRingkasan();
   }
 
+  // Hitung ongkir: asli dari KiriminAja, atau simulasi per provinsi
+  let nomorPermintaan = 0;
   async function hitungOngkir() {
     if (!keranjang.produk) return;
-    const kota = document.getElementById('inKota').value;
-    keranjang.ongkir = null;
-    if (kota && keranjang.kurir) {
-      document.getElementById('rOngkir').textContent = 'Menghitung…';
+    keranjang.layanan = []; keranjang.pilihan = null; keranjang.statusKurir = '';
+    if (!keranjang.tujuan) { renderPilihanKurir(); perbaruiRingkasan(); return; }
+
+    const berat = (keranjang.produk.berat_gram || 250) * keranjang.jumlah;
+    const no = ++nomorPermintaan;   // abaikan jawaban lama kalau pembeli sudah mengubah pilihan
+    keranjang.statusKurir = 'Menghitung ongkir…';
+    renderPilihanKurir(); perbaruiRingkasan();
+
+    if (modeKiriminAja()) {
       try {
-        keranjang.ongkir = await simulasiApiKiriminAja({ tujuan: kota, kurir: keranjang.kurir, berat_gram: (keranjang.produk.berat_gram || 200) * keranjang.jumlah });
+        const r = await panggilOngkir({
+          aksi: 'tarif', asal_id: pengaturan.asal.kecamatan_id, tujuan_id: keranjang.tujuan.id, berat,
+          nilai: keranjang.produk.harga * keranjang.jumlah, kurir: kurirAktif().map((k) => k.kode).filter(Boolean)
+        });
+        if (no !== nomorPermintaan) return;
+        if (!r || !r.ok) throw new Error((r && r.pesan) || 'tidak ada jawaban');
+        keranjang.layanan = r.layanan || [];
+        if (!keranjang.layanan.length && r.contoh_mentah) console.warn('Format ongkir KiriminAja tidak terbaca:', r.contoh_mentah);
       } catch (e) {
-        tampilkanToast('Gagal menghitung ongkir: ' + e.message);
+        if (no !== nomorPermintaan) return;
+        keranjang.statusKurir = 'Gagal mengambil ongkir (' + e.message + '). Coba pilih ulang kecamatan.';
+        renderPilihanKurir(); perbaruiRingkasan();
+        return;
       }
+    } else {
+      const t = TARIF_PROVINSI.find(([pola]) => pola.test(keranjang.tujuan.text)) || [null, 30000, '3-6'];
+      const kg = Math.max(1, Math.ceil(berat / 1000));
+      keranjang.layanan = kurirAktif().map((k) => ({
+        kode: k.kode, tipe: '', nama: k.nama, ongkir: Math.max(0, t[1] * kg + Number(k.selisih || 0)), etd: t[2], cod: k.cod ? 1 : 0, simulasi: true
+      })).sort((a, b) => a.ongkir - b.ongkir);
     }
-    perbaruiRingkasan();
+    keranjang.statusKurir = '';
+    renderPilihanKurir(); perbaruiRingkasan();
   }
 
   /* Hitung total (PERKIRAAN di browser). Angka final dihitung ulang database. */
   function hitungTotal() {
     const p = keranjang.produk;
     const subtotal = p.harga * keranjang.jumlah;
-    const ongkir = keranjang.ongkir ? keranjang.ongkir.ongkir : 0;
+    const ongkir = keranjang.pilihan ? keranjang.pilihan.ongkir : 0;
     let diskon = 0, potOngkir = 0;
     const fo = pengaturan.free_ongkir_non_cod || {};
     if (keranjang.metode !== 'COD' && fo.aktif && subtotal >= Number(fo.min_belanja || 0)) {
@@ -792,12 +857,12 @@
     document.getElementById('rDiskon').textContent = '−' + rupiah(t.diskon);
     document.getElementById('barisPotOngkir').classList.toggle('hidden', !t.potOngkir);
     document.getElementById('rPotOngkir').textContent = '−' + rupiah(t.potOngkir);
-    if (keranjang.ongkir) {
+    if (keranjang.pilihan) {
       document.getElementById('rOngkir').textContent = rupiah(t.ongkir);
-      document.getElementById('rKurirInfo').textContent = `(${keranjang.kurir})`;
-      document.getElementById('rEstimasi').textContent = keranjang.ongkir.estimasi;
+      document.getElementById('rKurirInfo').textContent = `(${keranjang.pilihan.nama})`;
+      document.getElementById('rEstimasi').textContent = keranjang.pilihan.etd ? keranjang.pilihan.etd + ' hari' : '-';
     } else {
-      document.getElementById('rOngkir').textContent = keranjang.kurir ? 'Pilih kota' : 'Pilih kurir';
+      document.getElementById('rOngkir').textContent = keranjang.statusKurir ? '…' : (keranjang.tujuan ? 'Pilih kurir' : 'Pilih kecamatan');
       document.getElementById('rKurirInfo').textContent = '';
       document.getElementById('rEstimasi').textContent = '-';
     }
@@ -840,15 +905,14 @@
       nama: document.getElementById('inNama').value.trim(),
       no_hp: normalisasiHp(document.getElementById('inHp').value),
       alamat: document.getElementById('inAlamat').value.trim(),
-      kota: document.getElementById('inKota').value
+      kota: keranjang.tujuan ? keranjang.tujuan.text : ''
     };
     if (!keranjang.produk) { tampilkanToast('Pilih produk dulu.'); return null; }
     if (!data.nama) { tampilkanToast('Nama wajib diisi.'); return null; }
     if (data.no_hp.length < 10) { tampilkanToast('Nomor WhatsApp belum valid.'); return null; }
     if (!data.alamat) { tampilkanToast('Alamat wajib diisi.'); return null; }
-    if (!data.kota) { tampilkanToast('Pilih kota tujuan dulu.'); return null; }
-    if (!keranjang.kurir) { tampilkanToast('Pilih kurir dulu.'); return null; }
-    if (!keranjang.ongkir) { tampilkanToast('Ongkir belum terhitung, coba pilih ulang kota.'); return null; }
+    if (!keranjang.tujuan) { tampilkanToast('Pilih kecamatan tujuan dari daftar.'); return null; }
+    if (!keranjang.pilihan) { tampilkanToast('Pilih kurir dulu.'); return null; }
     if (keranjang.voucher && hitungTotal().pesanVoucher) { tampilkanToast('Voucher belum memenuhi syarat. Hapus dulu atau ubah pesanan.'); return null; }
     return data;
   }
@@ -862,7 +926,11 @@
 
     const kiriman = {
       ...form, produk_id: keranjang.produk.id, jumlah: keranjang.jumlah, metode_bayar: keranjang.metode,
-      kurir: keranjang.kurir, ongkir: keranjang.ongkir.ongkir, kode_voucher: keranjang.voucher ? keranjang.voucher.kode : null
+      kecamatan_id: keranjang.tujuan.id,
+      kurir: keranjang.pilihan.nama, ongkir: keranjang.pilihan.ongkir,
+      kode_voucher: keranjang.voucher ? keranjang.voucher.kode : null,
+      // Tarif bertanda tangan dari server (mode KiriminAja) — dicek ulang oleh database
+      quote: keranjang.pilihan.sig ? (({ kode, tipe, nama, ongkir, etd, cod, tujuan_id, berat, exp, sig }) => ({ kode, tipe, nama, ongkir, etd, cod, tujuan_id, berat, exp, sig }))(keranjang.pilihan) : null
     };
 
     let hasil = null;
@@ -900,7 +968,7 @@
       `Nama        : ${form.nama}`,
       `No. HP      : ${hasil.no_hp}`,
       `Alamat      : ${form.alamat}, ${form.kota}`,
-      `Kurir       : ${keranjang.kurir}`,
+      `Kurir       : ${hasil.kurir || keranjang.pilihan.nama}`,
       `Pembayaran  : ${NAMA_METODE[hasil.metode_bayar]}`, '',
       `Subtotal    : ${rupiah(hasil.subtotal)}`,
       hasil.diskon ? `Diskon (${hasil.kode_voucher}) : -${rupiah(hasil.diskon)}` : null,
@@ -1071,10 +1139,10 @@
       banner.classList.remove('hidden');
     }
 
-    const select = document.getElementById('inKota');
-    select.innerHTML = '<option value="">— Pilih kota tujuan —</option>' +
-      KOTA_TUJUAN.map((k) => `<option value="${k.nama}">${k.nama} (${k.wilayah})</option>`).join('');
-    select.addEventListener('change', hitungOngkir);
+    document.getElementById('inKecamatan').addEventListener('input', ketikKecamatan);
+    document.addEventListener('click', (e) => {   // tutup daftar saran kalau klik di luar
+      if (!e.target.closest('#inKecamatan, #saranKecamatan')) document.getElementById('saranKecamatan').classList.add('hidden');
+    });
     document.getElementById('inVoucher').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); pakaiVoucher(); } });
     ['inLacak', 'inLacakHp'].forEach((id) => document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') lacakPesanan(); }));
     document.addEventListener('keydown', (e) => {
