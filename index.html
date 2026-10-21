@@ -3,164 +3,322 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>F3A Store — Produk Norvine COD</title>
+  <title>F3A Store — Produk Norvine Original, Bisa COD</title>
+  <meta name="description" content="Toko produk perawatan rambut & brewok Norvine original. Dikirim dari Surabaya, bisa COD, gratis ongkir untuk pembayaran transfer." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
 
-  <!-- Tailwind CSS (tampilan) -->
+  <!-- Font: Oswald (judul) + Inter (teks) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS + warna toko -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:   { DEFAULT: '#161616', 2: '#262626', 3: '#3a3a3a' },  // arang (warna utama)
+            bone:  '#f5f2ec',                                          // putih tulang (latar)
+            sand:  '#ebe5da',                                          // krem (latar selang-seling)
+            brass: { DEFAULT: '#a8814a', dark: '#8a6936', light: '#e8dcc6' } // kuningan (aksen)
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Oswald', 'Impact', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
   <!-- Supabase (database) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
   <!-- Pengaturan toko: nomor WA, Supabase → edit di file config.js -->
   <script src="config.js"></script>
 
   <style>
-    .deskripsi { white-space: pre-line; }   /* enter di deskripsi tetap jadi baris baru */
+    .deskripsi { white-space: pre-line; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { scrollbar-width: none; }
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .ikon-faq { transform: rotate(45deg); }
   </style>
 </head>
 
-<body class="bg-slate-50 text-slate-800 antialiased">
+<body class="bg-bone text-ink antialiased">
 
-  <!-- ===================== NAVIGASI ===================== -->
-  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-200">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-      <a href="#katalog" class="flex items-center gap-2 font-extrabold text-lg">
-        <span class="w-9 h-9 rounded-xl bg-emerald-600 text-white grid place-items-center">🛍️</span>
-        <span id="namaToko">F3A Store</span>
+  <!-- ===================== BAR PROMO ===================== -->
+  <div id="barPromo" class="hidden bg-ink text-bone text-xs sm:text-sm text-center px-4 py-2 tracking-wide"></div>
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="sticky top-0 z-40 bg-bone/95 backdrop-blur border-b border-ink/10">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+      <a href="#" class="flex items-center gap-2.5 shrink-0">
+        <img src="logo.png" alt="" class="w-10 h-10" />
+        <span class="font-display text-xl font-semibold tracking-wider uppercase whitespace-nowrap" id="namaToko">F3A Store</span>
       </a>
-      <nav class="flex gap-1 text-sm font-medium">
-        <a href="#katalog" class="px-3 py-2 rounded-lg hover:bg-slate-100">Katalog</a>
-        <a href="#checkout" class="px-3 py-2 rounded-lg hover:bg-slate-100">Checkout</a>
-        <a href="#lacak" class="px-3 py-2 rounded-lg hover:bg-slate-100">Lacak</a>
+      <nav class="hidden md:flex items-center gap-7 text-sm font-medium">
+        <a href="#produk" class="hover:text-brass-dark">Produk</a>
+        <a href="#cara-order" class="hover:text-brass-dark">Cara Order</a>
+        <a href="#testimoni" class="hover:text-brass-dark" id="navTestimoni">Testimoni</a>
+        <a href="#faq" class="hover:text-brass-dark">FAQ</a>
       </nav>
+      <button onclick="bukaPanel('panelLacak')" class="shrink-0 text-sm font-semibold border border-ink rounded-full px-4 py-2 hover:bg-ink hover:text-bone transition">
+        Lacak Pesanan
+      </button>
     </div>
-    <div id="bannerMode" class="hidden text-xs text-center py-1 bg-amber-50 text-amber-700"></div>
+    <div id="bannerMode" class="hidden text-xs text-center py-1 bg-amber-100 text-amber-800"></div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4">
-
+  <main>
     <!-- ===================== HERO ===================== -->
-    <section class="py-10 md:py-14 text-center">
-      <span class="inline-block text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">📦 Dikirim dari Surabaya • Bisa COD</span>
-      <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight">Produk Norvine original,<br class="hidden md:block" /> bayar di tempat.</h1>
-      <p class="mt-3 text-slate-500 max-w-xl mx-auto">Pilih produk, isi alamat, ongkir langsung terhitung. Bayar ke kurir saat paket sampai, atau transfer dan dapatkan gratis ongkir.</p>
-      <!-- Promo gratis ongkir (diisi otomatis dari pengaturan) -->
-      <div id="bannerPromo" class="hidden mt-5 inline-block bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium px-4 py-2 rounded-xl"></div>
-    </section>
+    <section class="bg-ink text-bone overflow-hidden">
+      <div class="max-w-6xl mx-auto px-4 py-14 md:py-20 grid md:grid-cols-5 gap-10 items-center">
+        <div class="md:col-span-3">
+          <p class="text-brass-light text-xs font-semibold tracking-[0.25em] uppercase">Perawatan Rambut &amp; Brewok Pria</p>
+          <h1 class="mt-4 font-display uppercase font-semibold text-4xl sm:text-5xl md:text-6xl leading-[1.05] tracking-wide">
+            Produk Norvine<br />Original.<br /><span class="text-brass">Kirim dari Surabaya.</span>
+          </h1>
+          <p class="mt-5 text-bone/70 max-w-lg leading-relaxed">
+            Belanja langsung tanpa ribet: pilih produk, isi alamat, ongkir langsung terhitung.
+            Bayar di tempat (COD) atau transfer.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="#produk" class="bg-brass hover:bg-brass-dark text-ink font-semibold px-7 py-3.5 rounded-full transition">Belanja Sekarang</a>
+            <a id="ctaWaHero" href="#" target="_blank" class="border border-bone/30 hover:border-bone font-semibold px-7 py-3.5 rounded-full transition">Tanya via WhatsApp</a>
+          </div>
+        </div>
+        <div class="md:col-span-2 hidden md:flex justify-center">
+          <div class="relative w-56 h-56 sm:w-72 sm:h-72">
+            <div class="absolute inset-0 rounded-full border border-brass/40 scale-110"></div>
+            <div class="absolute inset-0 rounded-full bg-bone grid place-items-center shadow-2xl">
+              <img src="logo.png" alt="Logo F3A Store" class="w-[86%] h-[86%]" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- ===================== 1. KATALOG ===================== -->
-    <section id="katalog" class="scroll-mt-28 pb-12">
-      <h2 class="text-2xl font-bold mb-5">Katalog Produk</h2>
-      <div id="daftarProduk" class="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <p class="col-span-full text-slate-400">Memuat produk…</p>
+      <!-- Baris kepercayaan -->
+      <div class="border-t border-bone/10">
+        <div id="barisKepercayaan" class="max-w-6xl mx-auto px-4 py-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"></div>
       </div>
     </section>
 
-    <!-- ===================== 2. CHECKOUT ===================== -->
-    <section id="checkout" class="scroll-mt-28 pb-12">
-      <h2 class="text-2xl font-bold mb-5">Checkout</h2>
+    <!-- ===================== PRODUK ===================== -->
+    <section id="produk" class="scroll-mt-20 max-w-6xl mx-auto px-4 py-14 md:py-20">
+      <div class="flex items-end justify-between gap-4 mb-8">
+        <div>
+          <p class="text-brass-dark text-xs font-semibold tracking-[0.25em] uppercase">Katalog</p>
+          <h2 class="mt-2 font-display uppercase text-3xl md:text-4xl font-semibold tracking-wide">Produk Kami</h2>
+        </div>
+        <p class="hidden sm:block text-sm text-ink/60 max-w-xs text-right">Klik produk untuk melihat detail, foto, dan ulasan pembeli.</p>
+      </div>
+      <div id="daftarProduk" class="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+        <p class="col-span-full text-ink/40">Memuat produk…</p>
+      </div>
+      <p id="catatanOngkir" class="hidden mt-4 text-xs text-ink/50"></p>
+    </section>
 
-      <div id="checkoutKosong" class="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-slate-500">
-        Belum ada produk dipilih. Klik salah satu produk di katalog, lalu tekan <b>"Beli Sekarang"</b>.
+    <!-- ===================== CARA ORDER ===================== -->
+    <section id="cara-order" class="scroll-mt-20 bg-sand">
+      <div class="max-w-6xl mx-auto px-4 py-14 md:py-20">
+        <p class="text-brass-dark text-xs font-semibold tracking-[0.25em] uppercase">Gampang</p>
+        <h2 class="mt-2 font-display uppercase text-3xl md:text-4xl font-semibold tracking-wide">Cara Order</h2>
+        <div class="mt-8 grid md:grid-cols-3 gap-4">
+          <div class="bg-bone rounded-2xl p-6">
+            <div class="font-display text-4xl text-brass">01</div>
+            <h3 class="mt-3 font-semibold text-lg">Pilih produk</h3>
+            <p class="mt-1 text-sm text-ink/60">Klik produk, cek deskripsi dan ulasan, lalu tekan "Beli Sekarang".</p>
+          </div>
+          <div class="bg-bone rounded-2xl p-6">
+            <div class="font-display text-4xl text-brass">02</div>
+            <h3 class="mt-3 font-semibold text-lg">Isi alamat &amp; cara bayar</h3>
+            <p class="mt-1 text-sm text-ink/60">Ongkir langsung terhitung. Pilih COD, atau transfer supaya dapat gratis ongkir.</p>
+          </div>
+          <div class="bg-bone rounded-2xl p-6">
+            <div class="font-display text-4xl text-brass">03</div>
+            <h3 class="mt-3 font-semibold text-lg">Paket dikirim</h3>
+            <p class="mt-1 text-sm text-ink/60">Kami konfirmasi lewat WhatsApp. Pantau paket lewat menu "Lacak Pesanan".</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TESTIMONI (otomatis dari ulasan) ===================== -->
+    <section id="testimoni" class="hidden scroll-mt-20 max-w-6xl mx-auto px-4 py-14 md:py-20">
+      <div class="flex items-end justify-between gap-4 mb-8">
+        <div>
+          <p class="text-brass-dark text-xs font-semibold tracking-[0.25em] uppercase">Kata Pembeli</p>
+          <h2 class="mt-2 font-display uppercase text-3xl md:text-4xl font-semibold tracking-wide">Testimoni</h2>
+        </div>
+        <div id="ringkasanRating" class="text-right"></div>
+      </div>
+      <div id="daftarTestimoni" class="flex gap-4 overflow-x-auto no-scrollbar snap-x pb-2"></div>
+    </section>
+
+    <!-- ===================== FAQ ===================== -->
+    <section id="faq" class="scroll-mt-20 bg-sand">
+      <div class="max-w-3xl mx-auto px-4 py-14 md:py-20">
+        <p class="text-brass-dark text-xs font-semibold tracking-[0.25em] uppercase text-center">Pertanyaan Umum</p>
+        <h2 class="mt-2 font-display uppercase text-3xl md:text-4xl font-semibold tracking-wide text-center">FAQ</h2>
+        <div id="daftarFaq" class="mt-8 space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ===================== AJAKAN TANYA ===================== -->
+    <section class="max-w-6xl mx-auto px-4 py-14">
+      <div class="bg-ink text-bone rounded-3xl px-6 py-10 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+        <div>
+          <h2 class="font-display uppercase text-2xl md:text-3xl font-semibold tracking-wide">Masih ragu? Tanya dulu.</h2>
+          <p class="mt-2 text-bone/70">Kami bantu pilihkan produk yang cocok. Balas cepat di jam operasional.</p>
+        </div>
+        <a id="ctaWaBawah" href="#" target="_blank" class="shrink-0 bg-brass hover:bg-brass-dark text-ink font-semibold px-7 py-3.5 rounded-full transition">Chat WhatsApp</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="bg-ink text-bone/70 text-sm">
+    <div class="max-w-6xl mx-auto px-4 py-12 grid gap-10 md:grid-cols-4">
+      <div class="md:col-span-2">
+        <div class="flex items-center gap-3">
+          <span class="w-11 h-11 rounded-full bg-bone grid place-items-center"><img src="logo.png" alt="" class="w-9 h-9" /></span>
+          <span class="font-display text-xl text-bone font-semibold tracking-wider uppercase namaTokoFooter">F3A Store</span>
+        </div>
+        <p class="mt-4 max-w-sm leading-relaxed">Toko produk perawatan rambut dan brewok Norvine original. Dikirim dari Surabaya ke seluruh Indonesia.</p>
+      </div>
+      <div>
+        <h3 class="text-bone font-semibold mb-3">Menu</h3>
+        <ul class="space-y-2">
+          <li><a href="#produk" class="hover:text-bone">Produk</a></li>
+          <li><a href="#cara-order" class="hover:text-bone">Cara Order</a></li>
+          <li><a href="#faq" class="hover:text-bone">FAQ</a></li>
+          <li><button onclick="bukaPanel('panelLacak')" class="hover:text-bone">Lacak Pesanan</button></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-bone font-semibold mb-3">Kontak</h3>
+        <ul class="space-y-2">
+          <li><a id="linkWaFooter" href="#" target="_blank" class="hover:text-bone">WhatsApp</a></li>
+          <li>Surabaya, Jawa Timur</li>
+        </ul>
+      </div>
+    </div>
+    <div class="max-w-6xl mx-auto px-4 pb-8">
+      <div id="infoBayarKurir" class="flex flex-wrap gap-2 text-xs"></div>
+      <p class="mt-6 pt-6 border-t border-bone/10 text-xs text-bone/40">© <span id="tahun"></span> <span class="namaTokoFooter">F3A Store</span>. Semua hak dilindungi.</p>
+    </div>
+  </footer>
+
+  <!-- Tombol chat melayang -->
+  <a id="tombolWaMelayang" href="#" target="_blank" aria-label="Chat WhatsApp"
+     class="fixed bottom-5 right-5 z-30 flex items-center gap-2 bg-[#25D366] hover:brightness-95 text-white font-semibold rounded-full shadow-lg pl-4 pr-5 py-3">
+    <svg viewBox="0 0 24 24" class="w-5 h-5 fill-current" aria-hidden="true"><path d="M12 3C6.9 3 3 6.6 3 11.2c0 2.4 1.1 4.6 2.9 6.1L5 21l4.1-1.9c.9.3 1.9.4 2.9.4 5.1 0 9-3.6 9-8.2S17.1 3 12 3z"/></svg>
+    <span class="text-sm">Chat</span>
+  </a>
+
+  <!-- ===================== POP-UP DETAIL PRODUK ===================== -->
+  <div id="modalDetail" class="panel hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-ink/60" onclick="tutupPanel('modalDetail')"></div>
+    <div class="relative bg-bone w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl sm:m-6 shadow-2xl">
+      <button onclick="tutupPanel('modalDetail')" aria-label="Tutup" class="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-bone shadow grid place-items-center text-2xl leading-none">×</button>
+      <div id="isiDetail"></div>
+    </div>
+  </div>
+
+  <!-- ===================== PANEL CHECKOUT ===================== -->
+  <div id="panelCheckout" class="panel hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-ink/60" onclick="tutupPanel('panelCheckout')"></div>
+    <div class="relative bg-bone w-full max-w-5xl h-[95vh] sm:h-auto sm:max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl sm:m-6 shadow-2xl">
+      <div class="sticky top-0 z-10 bg-bone/95 backdrop-blur border-b border-ink/10 px-5 py-4 flex items-center justify-between">
+        <h2 class="font-display uppercase text-xl font-semibold tracking-wide">Checkout</h2>
+        <button onclick="tutupPanel('panelCheckout')" aria-label="Tutup" class="w-10 h-10 rounded-full hover:bg-sand grid place-items-center text-2xl leading-none">×</button>
       </div>
 
-      <div id="checkoutForm" class="hidden grid gap-6 lg:grid-cols-5">
-        <form class="lg:col-span-3 space-y-6" onsubmit="return false;">
-
-          <!-- Data pengiriman -->
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div class="grid gap-6 lg:grid-cols-5 p-5">
+        <form class="lg:col-span-3 space-y-5" onsubmit="return false;">
+          <div class="bg-white rounded-2xl border border-ink/10 p-5 space-y-4">
             <h3 class="font-semibold text-lg">1. Data Pengiriman</h3>
             <div>
               <label class="block text-sm font-medium mb-1" for="inNama">Nama Lengkap</label>
-              <input id="inNama" type="text" placeholder="Contoh: Budi Santoso" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input id="inNama" type="text" placeholder="Contoh: Budi Santoso" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brass" />
             </div>
             <div>
               <label class="block text-sm font-medium mb-1" for="inHp">Nomor WhatsApp</label>
-              <input id="inHp" type="tel" inputmode="numeric" placeholder="Contoh: 081234567890" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input id="inHp" type="tel" inputmode="numeric" placeholder="Contoh: 081234567890" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brass" />
             </div>
             <div>
               <label class="block text-sm font-medium mb-1" for="inAlamat">Alamat Lengkap</label>
-              <textarea id="inAlamat" rows="2" placeholder="Jalan, nomor rumah, RT/RW, kecamatan" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+              <textarea id="inAlamat" rows="2" placeholder="Jalan, nomor rumah, RT/RW, kecamatan" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
             </div>
             <div>
               <label class="block text-sm font-medium mb-1" for="inKota">Kota Tujuan</label>
-              <select id="inKota" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"></select>
+              <select id="inKota" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></select>
             </div>
           </div>
-
-          <!-- Cara bayar -->
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="bg-white rounded-2xl border border-ink/10 p-5">
             <h3 class="font-semibold text-lg mb-3">2. Cara Pembayaran</h3>
             <div id="pilihanBayar" class="grid sm:grid-cols-3 gap-3"></div>
           </div>
-
-          <!-- Kurir -->
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="bg-white rounded-2xl border border-ink/10 p-5">
             <h3 class="font-semibold text-lg mb-3">3. Pilih Kurir</h3>
             <div id="pilihanKurir" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
           </div>
         </form>
 
-        <!-- Ringkasan -->
-        <aside class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 h-fit lg:sticky lg:top-28">
+        <aside class="lg:col-span-2 bg-white rounded-2xl border border-ink/10 p-5 h-fit lg:sticky lg:top-20">
           <h3 class="font-semibold text-lg mb-3">Ringkasan Pesanan</h3>
-          <div id="ringkasanProduk" class="flex gap-3 items-center pb-4 border-b border-slate-100"></div>
-
-          <!-- Voucher -->
-          <div class="py-4 border-b border-slate-100">
+          <div id="ringkasanProduk" class="flex gap-3 items-center pb-4 border-b border-ink/10"></div>
+          <div class="py-4 border-b border-ink/10">
             <div class="flex gap-2">
-              <input id="inVoucher" type="text" placeholder="Kode voucher" class="flex-1 min-w-0 rounded-xl border border-slate-300 px-3 py-2 uppercase text-sm" />
-              <button type="button" id="btnVoucher" onclick="pakaiVoucher()" class="px-4 rounded-xl bg-slate-900 text-white text-sm font-semibold">Pakai</button>
+              <input id="inVoucher" type="text" placeholder="Kode voucher" class="flex-1 min-w-0 rounded-xl border border-ink/20 px-3 py-2 uppercase text-sm" />
+              <button type="button" id="btnVoucher" onclick="pakaiVoucher()" class="px-4 rounded-xl bg-ink text-bone text-sm font-semibold">Pakai</button>
             </div>
             <p id="pesanVoucher" class="text-xs mt-1"></p>
           </div>
-
           <dl class="py-4 space-y-2 text-sm">
-            <div class="flex justify-between"><dt class="text-slate-500">Subtotal <span id="rJumlah"></span></dt><dd id="rSubtotal">-</dd></div>
-            <div id="barisDiskon" class="hidden flex justify-between text-emerald-700"><dt>Diskon voucher</dt><dd id="rDiskon">-</dd></div>
-            <div class="flex justify-between"><dt class="text-slate-500">Ongkir <span id="rKurirInfo"></span></dt><dd id="rOngkir">-</dd></div>
-            <div id="barisPotOngkir" class="hidden flex justify-between text-emerald-700"><dt>Gratis ongkir</dt><dd id="rPotOngkir">-</dd></div>
-            <div class="flex justify-between text-xs text-slate-400"><dt>Estimasi tiba</dt><dd id="rEstimasi">-</dd></div>
+            <div class="flex justify-between"><dt class="text-ink/60">Subtotal <span id="rJumlah"></span></dt><dd id="rSubtotal">-</dd></div>
+            <div id="barisDiskon" class="hidden flex justify-between text-brass-dark"><dt>Diskon voucher</dt><dd id="rDiskon">-</dd></div>
+            <div class="flex justify-between"><dt class="text-ink/60">Ongkir <span id="rKurirInfo"></span></dt><dd id="rOngkir">-</dd></div>
+            <div id="barisPotOngkir" class="hidden flex justify-between text-brass-dark"><dt>Gratis ongkir</dt><dd id="rPotOngkir">-</dd></div>
+            <div class="flex justify-between text-xs text-ink/40"><dt>Estimasi tiba</dt><dd id="rEstimasi">-</dd></div>
           </dl>
-          <div class="flex justify-between items-center border-t border-slate-100 pt-4">
+          <div class="flex justify-between items-center border-t border-ink/10 pt-4">
             <span id="labelTotal" class="font-semibold">Total</span>
-            <span id="rTotal" class="text-xl font-extrabold text-emerald-600">-</span>
+            <span id="rTotal" class="text-2xl font-bold">-</span>
           </div>
-          <button id="btnPesan" onclick="buatPesanan()" class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition">
+          <button id="btnPesan" onclick="buatPesanan()" class="mt-5 w-full bg-ink hover:bg-ink-2 text-bone font-semibold py-3.5 rounded-full transition">
             Buat Pesanan
           </button>
-          <p class="text-xs text-slate-400 mt-3 text-center">Detail pesanan akan diteruskan ke WhatsApp penjual untuk konfirmasi.</p>
-          <div id="hasilPesanan" class="hidden mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm"></div>
+          <p class="text-xs text-ink/40 mt-3 text-center">Detail pesanan akan diteruskan ke WhatsApp penjual untuk konfirmasi.</p>
+          <div id="hasilPesanan" class="hidden mt-4 rounded-2xl bg-brass-light/50 border border-brass/30 p-4 text-sm"></div>
         </aside>
       </div>
-    </section>
-
-    <!-- ===================== 3. LACAK PESANAN ===================== -->
-    <section id="lacak" class="scroll-mt-28 pb-16">
-      <h2 class="text-2xl font-bold mb-5">Lacak Pesanan Saya</h2>
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <input id="inLacak" type="text" placeholder="Masukkan nomor HP atau nomor pesanan (mis. SBY2610211234)" class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          <button onclick="lacakPesanan()" class="bg-slate-900 hover:bg-slate-700 text-white font-semibold px-6 py-2.5 rounded-xl">Lacak</button>
-        </div>
-        <div id="hasilLacak" class="mt-5 space-y-4"></div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="border-t border-slate-200 py-6 text-center text-sm text-slate-400">
-    © <span id="tahun"></span> <span class="namaTokoFooter">F3A Store</span> — Dikirim dari Surabaya
-  </footer>
-
-  <!-- ===================== POP-UP DETAIL PRODUK ===================== -->
-  <div id="modalDetail" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" onclick="tutupDetail()"></div>
-    <div class="relative bg-white w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl sm:m-6 shadow-xl">
-      <button onclick="tutupDetail()" aria-label="Tutup" class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/90 shadow grid place-items-center text-2xl leading-none">×</button>
-      <div id="isiDetail"></div>
     </div>
   </div>
 
-  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg opacity-0 pointer-events-none transition-opacity z-[60]"></div>
+  <!-- ===================== PANEL LACAK ===================== -->
+  <div id="panelLacak" class="panel hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-ink/60" onclick="tutupPanel('panelLacak')"></div>
+    <div class="relative bg-bone w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl sm:m-6 shadow-2xl">
+      <div class="sticky top-0 z-10 bg-bone/95 backdrop-blur border-b border-ink/10 px-5 py-4 flex items-center justify-between">
+        <h2 class="font-display uppercase text-xl font-semibold tracking-wide">Lacak Pesanan</h2>
+        <button onclick="tutupPanel('panelLacak')" aria-label="Tutup" class="w-10 h-10 rounded-full hover:bg-sand grid place-items-center text-2xl leading-none">×</button>
+      </div>
+      <div class="p-5">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input id="inLacak" type="text" placeholder="Nomor HP atau nomor pesanan (SBY…)" class="flex-1 rounded-xl border border-ink/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brass" />
+          <button onclick="lacakPesanan()" class="bg-ink hover:bg-ink-2 text-bone font-semibold px-6 py-2.5 rounded-full">Lacak</button>
+        </div>
+        <div id="hasilLacak" class="mt-5 space-y-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-ink text-bone text-sm px-4 py-3 rounded-xl shadow-lg opacity-0 pointer-events-none transition-opacity z-[60]"></div>
 
 
   <script>
@@ -171,15 +329,20 @@
     NAMA_TOKO: 'F3A Store', NOMOR_WA_PENJUAL: '', SUPABASE_URL: '', SUPABASE_ANON_KEY: '', KOTA_ASAL: 'Surabaya'
   }, window.KONFIG || {});
 
-  /* Pengaturan cadangan — dipakai HANYA kalau database belum tersambung.
-     Pengaturan asli (cara bayar, kurir, gratis ongkir) diedit di admin.html → Pengaturan. */
+  /* ✏️ ISI FAQ — silakan ubah pertanyaan & jawaban sesuai kebijakan tokomu */
+  const FAQ = [
+    { t: 'Apakah produknya original?', j: 'Ya. Semua produk yang kami jual adalah produk Norvine original, bukan barang tiruan.' },
+    { t: 'Bisa bayar di tempat (COD)?', j: 'Bisa. Pilih "COD" saat checkout, lalu bayar ke kurir ketika paket sampai.' },
+    { t: 'Kenapa bayar transfer bisa gratis ongkir?', j: 'Pembayaran transfer/QRIS tidak kena biaya layanan COD dari ekspedisi, jadi penghematannya kami kembalikan ke pembeli dalam bentuk potongan ongkir.' },
+    { t: 'Berapa lama pengiriman?', j: 'Paket dikirim dari Surabaya. Estimasi tiba muncul di halaman checkout sesuai kota tujuan dan kurir yang dipilih.' },
+    { t: 'Bagaimana cara melacak paket?', j: 'Klik "Lacak Pesanan" di bagian atas halaman, lalu masukkan nomor HP atau nomor pesanan kamu.' },
+    { t: 'Paket rusak atau salah kirim?', j: 'Hubungi kami lewat WhatsApp dengan menyertakan video unboxing. Kami bantu cek dan carikan solusinya.' }
+  ];
+
   const PENGATURAN_CADANGAN = {
     pembayaran: { cod: { aktif: true }, transfer: { aktif: false, rekening: [] }, qris: { aktif: false, gambar: '' } },
     free_ongkir_non_cod: { aktif: false, maks: 0, min_belanja: 0 },
-    kurir: [
-      { nama: 'J&T', aktif: true, cod: true, selisih: 0 },
-      { nama: 'Ninja Xpress', aktif: true, cod: true, selisih: -1000 }
-    ]
+    kurir: [{ nama: 'J&T', aktif: true, cod: true, selisih: 0 }, { nama: 'Ninja Xpress', aktif: true, cod: true, selisih: -1000 }]
   };
   const PRODUK_CADANGAN = [
     { id: 1, nama: 'Norvine Minoxidil',    harga: 85000, berat_gram: 200, foto: [], deskripsi: 'Minoxidil Norvine original.' },
@@ -214,16 +377,7 @@
   let semuaUlasan = [];
   let detailAktif = null;
   let hasilLacak = {};
-
-  // Isi keranjang checkout (1 jenis produk per pesanan)
-  const keranjang = {
-    produk: null,
-    jumlah: 1,
-    metode: 'COD',
-    kurir: null,
-    ongkir: null,      // hasil hitung ongkir {ongkir, estimasi}
-    voucher: null      // info voucher yang valid (dari cek_voucher)
-  };
+  const keranjang = { produk: null, jumlah: 1, metode: 'COD', kurir: null, ongkir: null, voucher: null };
 
   /* =====================================================================
      ALAT BANTU KECIL
@@ -240,7 +394,7 @@
   }
   const bintang = (n) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
   function fotoUtama(p) {
-    return (p.foto && p.foto[0]) || `https://placehold.co/600x600/ecfdf5/047857?text=${encodeURIComponent(p.nama)}`;
+    return (p.foto && p.foto[0]) || `https://placehold.co/600x600/ebe5da/8a6936?text=${encodeURIComponent(p.nama)}`;
   }
   function statUlasan(produkId) {
     const list = semuaUlasan.filter((u) => Number(u.produk_id) === Number(produkId));
@@ -254,16 +408,39 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => t.classList.add('opacity-0'), 3500);
   }
+  const linkWa = (teks) => `https://wa.me/${CFG.NOMOR_WA_PENJUAL}?text=${encodeURIComponent(teks)}`;
   const kurirAktif = () => (pengaturan.kurir || []).filter((k) => k.aktif);
   const metodeAktif = () => ['COD', 'Transfer', 'QRIS'].filter((m) => pengaturan.pembayaran?.[m.toLowerCase()]?.aktif);
+  const gratisOngkirAktif = () => !!(pengaturan.free_ongkir_non_cod?.aktif && metodeAktif().some((m) => m !== 'COD'));
+
+  // Ikon kecil (garis) untuk baris kepercayaan
+  const IKON = {
+    cek:   '<path d="M20 6L9 17l-5-5"/>',
+    uang:  '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+    truk:  '<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="18.5" r="2"/>',
+    pin:   '<path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>'
+  };
+  const ikon = (nama) => `<svg viewBox="0 0 24 24" class="w-5 h-5 shrink-0 stroke-brass" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IKON[nama]}</svg>`;
 
   /* =====================================================================
-     AMBIL DATA DARI DATABASE
+     PANEL / POP-UP (detail produk, checkout, lacak)
+     ===================================================================== */
+  function bukaPanel(id) {
+    document.getElementById(id).classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  function tutupPanel(id) {
+    document.getElementById(id).classList.add('hidden');
+    if (!document.querySelector('.panel:not(.hidden)')) document.body.style.overflow = '';
+  }
+
+  /* =====================================================================
+     AMBIL DATA
      ===================================================================== */
   async function muatSemua() {
     if (!sb) {
       daftarProduk = PRODUK_CADANGAN;
-      renderKatalog();
+      renderSemua();
       return;
     }
     const [hProduk, hUlasan, hPengaturan] = await Promise.all([
@@ -277,64 +454,137 @@
     semuaUlasan = hUlasan.data || [];
     if (hProduk.error) {
       console.error('Gagal memuat produk:', hProduk.error);
-      document.getElementById('daftarProduk').innerHTML = '<p class="col-span-full text-red-500">Gagal memuat produk. Coba refresh halaman.</p>';
+      document.getElementById('daftarProduk').innerHTML = '<p class="col-span-full text-red-600">Gagal memuat produk. Coba refresh halaman.</p>';
+      daftarProduk = [];
     } else {
       daftarProduk = hProduk.data || [];
-      renderKatalog();
     }
-    renderPromo();
+    renderSemua();
   }
 
-  // Banner "gratis ongkir" di bagian atas, kalau aktif
+  function renderSemua() {
+    if (daftarProduk.length || !sb) renderKatalog();
+    renderPromo();
+    renderKepercayaan();
+    renderTestimoni();
+    renderFooterInfo();
+  }
+
+  // Bar promo paling atas
   function renderPromo() {
     const fo = pengaturan.free_ongkir_non_cod || {};
-    const adaNonCod = metodeAktif().some((m) => m !== 'COD');
-    const el = document.getElementById('bannerPromo');
-    if (!fo.aktif || !adaNonCod) { el.classList.add('hidden'); return; }
+    const el = document.getElementById('barPromo');
+    if (!gratisOngkirAktif()) { el.classList.add('hidden'); return; }
     const batas = Number(fo.maks) > 0 ? ` s/d ${rupiah(fo.maks)}` : '';
-    const min = Number(fo.min_belanja) > 0 ? ` (min. belanja ${rupiah(fo.min_belanja)})` : '';
-    el.textContent = `💸 Bayar via Transfer / QRIS: GRATIS ONGKIR${batas}${min}`;
+    const min = Number(fo.min_belanja) > 0 ? ` · min. belanja ${rupiah(fo.min_belanja)}` : '';
+    el.innerHTML = `<b>GRATIS ONGKIR${batas}</b> untuk pembayaran Transfer / QRIS${min}`;
     el.classList.remove('hidden');
   }
 
+  // Baris kepercayaan di bawah hero
+  function renderKepercayaan() {
+    const item = [
+      ['cek', '100% Original', 'Produk Norvine asli'],
+      metodeAktif().includes('COD') ? ['uang', 'Bisa COD', 'Bayar saat paket sampai'] : null,
+      gratisOngkirAktif() ? ['truk', 'Gratis Ongkir', 'Untuk bayar transfer'] : ['truk', 'Ongkir Real-time', 'Banyak pilihan kurir'],
+      ['pin', 'Dari Surabaya', 'Dikirim setiap hari kerja']
+    ].filter(Boolean);
+    document.getElementById('barisKepercayaan').innerHTML = item.map(([ik, judul, ket]) => `
+      <div class="flex items-start gap-3">
+        ${ikon(ik)}
+        <div><div class="font-semibold text-bone">${judul}</div><div class="text-bone/50 text-xs">${ket}</div></div>
+      </div>`).join('');
+  }
+
   /* =====================================================================
-     1) KATALOG
+     KATALOG
      ===================================================================== */
   function renderKatalog() {
     const wadah = document.getElementById('daftarProduk');
-    if (!daftarProduk.length) { wadah.innerHTML = '<p class="col-span-full text-slate-400">Belum ada produk.</p>'; return; }
+    const catatan = document.getElementById('catatanOngkir');
+    const fo = pengaturan.free_ongkir_non_cod || {};
+    catatan.classList.toggle('hidden', !gratisOngkirAktif());
+    catatan.textContent = `*Gratis ongkir${Number(fo.maks) > 0 ? ' s/d ' + rupiah(fo.maks) : ''} untuk pembayaran Transfer / QRIS${Number(fo.min_belanja) > 0 ? ', min. belanja ' + rupiah(fo.min_belanja) : ''}.`;
+    if (!daftarProduk.length) { wadah.innerHTML = '<p class="col-span-full text-ink/40">Belum ada produk.</p>'; return; }
     wadah.innerHTML = daftarProduk.map((p) => {
       const { list, rata } = statUlasan(p.id);
       return `
-        <button type="button" onclick="bukaDetail(${p.id})"
-          class="text-left bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition flex flex-col">
-          <img src="${escapeHtml(fotoUtama(p))}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square object-cover bg-slate-100" loading="lazy" />
+        <button type="button" onclick="bukaDetail(${p.id})" class="group text-left bg-white rounded-2xl overflow-hidden border border-ink/5 hover:shadow-xl hover:-translate-y-1 transition duration-300 flex flex-col">
+          <div class="relative overflow-hidden bg-sand">
+            <img src="${escapeHtml(fotoUtama(p))}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+            ${gratisOngkirAktif() ? '<span class="absolute top-2 left-2 bg-ink text-bone text-[10px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full">Gratis ongkir*</span>' : ''}
+          </div>
           <div class="p-3 sm:p-4 flex flex-col flex-1">
             <h3 class="font-semibold leading-snug">${escapeHtml(p.nama)}</h3>
-            <div class="text-xs mt-1">
-              <span class="text-amber-500">${list.length ? '★ ' + rata.toFixed(1) : '☆'}</span>
-              <span class="text-slate-500">${list.length ? `(${list.length} ulasan)` : 'Belum ada ulasan'}</span>
+            <div class="text-xs mt-1 text-ink/50">
+              ${list.length ? `<span class="text-brass">★</span> ${rata.toFixed(1)} · ${list.length} ulasan` : 'Produk baru'}
             </div>
-            <div class="mt-auto pt-2 text-lg font-extrabold text-emerald-700">${rupiah(p.harga)}</div>
+            <div class="mt-auto pt-3 flex items-center justify-between">
+              <span class="text-lg font-bold">${rupiah(p.harga)}</span>
+              <span class="hidden sm:inline text-xs font-semibold text-brass-dark group-hover:underline">Detail →</span>
+            </div>
           </div>
         </button>`;
     }).join('');
   }
 
   /* =====================================================================
-     POP-UP DETAIL PRODUK
+     TESTIMONI (dari ulasan yang ada)
+     ===================================================================== */
+  function renderTestimoni() {
+    const pilihan = semuaUlasan.filter((u) => u.komentar && u.komentar.trim().length >= 10).slice(0, 10);
+    const sec = document.getElementById('testimoni');
+    const nav = document.getElementById('navTestimoni');
+    sec.classList.toggle('hidden', !pilihan.length);   // sembunyikan kalau belum ada testimoni
+    nav.classList.toggle('hidden', !pilihan.length);
+    if (!pilihan.length) return;
+
+    const rata = semuaUlasan.reduce((s, u) => s + Number(u.rating), 0) / semuaUlasan.length;
+    document.getElementById('ringkasanRating').innerHTML = `
+      <div class="font-display text-3xl font-semibold">${rata.toFixed(1)}<span class="text-ink/30 text-xl">/5</span></div>
+      <div class="text-xs text-ink/50">${semuaUlasan.length} ulasan pembeli</div>`;
+    const namaProduk = (id) => (daftarProduk.find((p) => Number(p.id) === Number(id)) || {}).nama || '';
+    document.getElementById('daftarTestimoni').innerHTML = pilihan.map((u) => `
+      <figure class="snap-start shrink-0 w-72 sm:w-80 bg-white rounded-2xl border border-ink/5 p-5 flex flex-col">
+        <div class="text-brass tracking-widest">${bintang(u.rating)}</div>
+        <blockquote class="mt-3 text-sm leading-relaxed text-ink/80 flex-1">"${escapeHtml(u.komentar)}"</blockquote>
+        <figcaption class="mt-4 pt-4 border-t border-ink/10 text-xs">
+          <div class="font-semibold">${escapeHtml(u.nama)}</div>
+          <div class="text-ink/50">${escapeHtml(namaProduk(u.produk_id))}</div>
+        </figcaption>
+      </figure>`).join('');
+  }
+
+  function renderFaq() {
+    document.getElementById('daftarFaq').innerHTML = FAQ.map((f) => `
+      <details class="bg-bone rounded-2xl px-5 py-4 group">
+        <summary class="flex justify-between items-center gap-4 cursor-pointer font-semibold">
+          ${escapeHtml(f.t)}
+          <span class="ikon-faq text-brass text-2xl leading-none transition-transform">+</span>
+        </summary>
+        <p class="mt-3 text-sm text-ink/70 leading-relaxed">${escapeHtml(f.j)}</p>
+      </details>`).join('');
+  }
+
+  // Chip cara bayar & kurir di footer
+  function renderFooterInfo() {
+    const chip = (t) => `<span class="border border-bone/20 rounded-full px-3 py-1">${escapeHtml(t)}</span>`;
+    document.getElementById('infoBayarKurir').innerHTML =
+      metodeAktif().map((m) => chip(m === 'COD' ? 'COD' : NAMA_METODE[m])).join('') +
+      '<span class="w-px bg-bone/20 mx-1"></span>' +
+      kurirAktif().map((k) => chip(k.nama)).join('');
+  }
+
+  /* =====================================================================
+     DETAIL PRODUK
      ===================================================================== */
   function bukaDetail(id) {
     detailAktif = daftarProduk.find((p) => Number(p.id) === Number(id));
     if (!detailAktif) return;
     renderDetail(0);
-    document.getElementById('modalDetail').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    bukaPanel('modalDetail');
   }
-  function tutupDetail() {
-    document.getElementById('modalDetail').classList.add('hidden');
-    document.body.style.overflow = '';
-  }
+
   function renderDetail(idxFoto) {
     const p = detailAktif;
     const foto = p.foto && p.foto.length ? p.foto : [fotoUtama(p)];
@@ -342,71 +592,73 @@
     const thumbnail = foto.length > 1 ? `
       <div class="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
         ${foto.map((f, i) => `
-          <button type="button" onclick="renderDetail(${i})" class="shrink-0 rounded-lg overflow-hidden border-2 ${i === idxFoto ? 'border-emerald-500' : 'border-transparent'}">
+          <button type="button" onclick="renderDetail(${i})" class="shrink-0 rounded-xl overflow-hidden border-2 ${i === idxFoto ? 'border-ink' : 'border-transparent opacity-70'}">
             <img src="${escapeHtml(f)}" alt="" class="w-16 h-16 object-cover" />
           </button>`).join('')}
       </div>` : '';
     const daftarUlasan = list.length
       ? list.map((u) => `
-          <li class="py-3 border-t border-slate-100">
+          <li class="py-4 border-t border-ink/10">
             <div class="flex justify-between items-center">
-              <span class="font-medium">${escapeHtml(u.nama)}</span>
-              <span class="text-amber-500 text-sm">${bintang(u.rating)}</span>
+              <span class="font-semibold text-sm">${escapeHtml(u.nama)}</span>
+              <span class="text-brass text-sm tracking-wider">${bintang(u.rating)}</span>
             </div>
-            ${u.komentar ? `<p class="text-slate-600 text-sm mt-1">${escapeHtml(u.komentar)}</p>` : ''}
-            <div class="text-xs text-slate-400 mt-1">${new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            ${u.komentar ? `<p class="text-ink/70 text-sm mt-1">${escapeHtml(u.komentar)}</p>` : ''}
+            <div class="text-xs text-ink/40 mt-1">${new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
           </li>`).join('')
-      : '<li class="py-3 text-slate-400 text-sm">Belum ada ulasan untuk produk ini.</li>';
+      : '<li class="py-4 text-ink/40 text-sm border-t border-ink/10">Belum ada ulasan untuk produk ini.</li>';
 
     document.getElementById('isiDetail').innerHTML = `
-      <div class="grid md:grid-cols-2 gap-6 p-5 sm:p-6">
+      <div class="grid md:grid-cols-2 gap-6 p-5 sm:p-7">
         <div>
-          <img src="${escapeHtml(foto[idxFoto] || foto[0])}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square object-cover rounded-xl bg-slate-100" />
+          <img src="${escapeHtml(foto[idxFoto] || foto[0])}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square object-cover rounded-2xl bg-sand" />
           ${thumbnail}
         </div>
         <div class="flex flex-col">
-          <span class="text-xs text-emerald-700 font-semibold">📍 Dikirim dari ${escapeHtml(CFG.KOTA_ASAL)} • Bisa COD</span>
-          <h3 class="mt-1 text-2xl font-bold pr-8">${escapeHtml(p.nama)}</h3>
-          <div class="text-sm mt-1">
-            <span class="text-amber-500">${bintang(rata)}</span>
-            <span class="text-slate-500">${list.length ? rata.toFixed(1) + ' dari 5 • ' + list.length + ' ulasan' : 'Belum ada ulasan'}</span>
+          <span class="text-[11px] text-brass-dark font-semibold tracking-[0.2em] uppercase">Norvine · Original</span>
+          <h3 class="mt-2 font-display uppercase text-3xl font-semibold tracking-wide pr-10">${escapeHtml(p.nama)}</h3>
+          <div class="text-sm mt-2 text-ink/60">
+            <span class="text-brass tracking-wider">${bintang(rata)}</span>
+            ${list.length ? rata.toFixed(1) + ' · ' + list.length + ' ulasan' : 'Belum ada ulasan'}
           </div>
-          <div class="mt-3 text-3xl font-extrabold text-emerald-700">${rupiah(p.harga)}</div>
-          <button onclick="pilihProduk(${p.id})" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl">Beli Sekarang</button>
-          <h4 class="mt-6 font-semibold">Deskripsi Produk</h4>
-          <div class="deskripsi mt-2 text-sm text-slate-600 leading-relaxed">${escapeHtml(p.deskripsi || '-')}</div>
+          <div class="mt-4 text-3xl font-bold">${rupiah(p.harga)}</div>
+          <button onclick="pilihProduk(${p.id})" class="mt-5 w-full bg-ink hover:bg-ink-2 text-bone font-semibold py-3.5 rounded-full transition">Beli Sekarang</button>
+          <div class="mt-4 grid grid-cols-2 gap-2 text-xs text-ink/70">
+            ${metodeAktif().includes('COD') ? `<div class="flex items-center gap-2 bg-sand rounded-xl px-3 py-2">${ikon('uang')} Bisa COD</div>` : ''}
+            ${gratisOngkirAktif() ? `<div class="flex items-center gap-2 bg-sand rounded-xl px-3 py-2">${ikon('truk')} Gratis ongkir via transfer</div>` : ''}
+          </div>
+          <h4 class="mt-6 font-semibold">Deskripsi</h4>
+          <div class="deskripsi mt-2 text-sm text-ink/70 leading-relaxed">${escapeHtml(p.deskripsi || '-')}</div>
         </div>
       </div>
-      <div class="px-5 sm:px-6 pb-6">
-        <h4 class="font-semibold">Ulasan Pembeli</h4>
-        <ul class="mt-1">${daftarUlasan}</ul>
+      <div class="px-5 sm:px-7 pb-7">
+        <h4 class="font-semibold mb-1">Ulasan Pembeli</h4>
+        <ul>${daftarUlasan}</ul>
       </div>`;
   }
 
   /* =====================================================================
-     2) CHECKOUT
+     CHECKOUT
      ===================================================================== */
   function pilihProduk(id) {
     keranjang.produk = daftarProduk.find((p) => Number(p.id) === Number(id));
     if (!keranjang.produk) return;
     keranjang.jumlah = 1;
-    tutupDetail();
-    document.getElementById('checkoutKosong').classList.add('hidden');
-    document.getElementById('checkoutForm').classList.remove('hidden');
+    tutupPanel('modalDetail');
     document.getElementById('hasilPesanan').classList.add('hidden');
     renderPilihanBayar();
     renderPilihanKurir();
     hitungOngkir();
-    document.getElementById('checkout').scrollIntoView({ behavior: 'smooth' });
+    bukaPanel('panelCheckout');
   }
 
-  // Ubah jumlah barang (tombol − / +)
   function ubahJumlah(selisih) {
     keranjang.jumlah = Math.max(1, Math.min(20, keranjang.jumlah + selisih));
-    hitungOngkir();   // berat berubah → ongkir dihitung ulang
+    hitungOngkir();
   }
 
-  // Tombol pilihan cara bayar, dari pengaturan admin
+  const kelasPilihan = 'h-full rounded-xl border-2 border-ink/10 p-3 peer-checked:border-ink peer-checked:bg-sand transition';
+
   function renderPilihanBayar() {
     const daftar = metodeAktif();
     if (!daftar.includes(keranjang.metode)) keranjang.metode = daftar[0] || 'COD';
@@ -414,20 +666,19 @@
     document.getElementById('pilihanBayar').innerHTML = daftar.map((m) => `
       <label class="cursor-pointer">
         <input type="radio" name="metode" value="${m}" class="peer sr-only" ${m === keranjang.metode ? 'checked' : ''} onchange="gantiMetode('${m}')" />
-        <div class="h-full rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
+        <div class="${kelasPilihan}">
           <div class="font-semibold">${NAMA_METODE[m]}</div>
-          <div class="text-xs text-slate-500">${m === 'COD' ? 'Bayar ke kurir saat paket sampai' : (fo.aktif ? '✨ Gratis ongkir' : 'Bayar dulu, lalu kirim bukti')}</div>
+          <div class="text-xs text-ink/50">${m === 'COD' ? 'Bayar ke kurir saat paket sampai' : (fo.aktif ? '<span class="text-brass-dark font-semibold">Gratis ongkir</span>' : 'Bayar dulu, lalu kirim bukti')}</div>
         </div>
       </label>`).join('');
   }
 
   function gantiMetode(m) {
     keranjang.metode = m;
-    renderPilihanKurir();   // kurir non-COD jadi bisa dipilih / tidak
+    renderPilihanKurir();
     hitungOngkir();
   }
 
-  // Tombol pilihan kurir; kalau COD, kurir yang tidak melayani COD dinonaktifkan
   function renderPilihanKurir() {
     const daftar = kurirAktif();
     const bisaDipilih = (k) => keranjang.metode !== 'COD' || k.cod;
@@ -439,9 +690,9 @@
       return `
         <label class="${boleh ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}">
           <input type="radio" name="kurir" value="${escapeHtml(k.nama)}" class="peer sr-only" ${k.nama === keranjang.kurir ? 'checked' : ''} ${boleh ? '' : 'disabled'} />
-          <div class="h-full rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
+          <div class="${kelasPilihan}">
             <div class="font-semibold">${escapeHtml(k.nama)}</div>
-            <div class="text-xs text-slate-500">${k.cod ? 'Bisa COD' : 'Tidak bisa COD'}</div>
+            <div class="text-xs text-ink/50">${k.cod ? 'Bisa COD' : 'Tidak bisa COD'}</div>
           </div>
         </label>`;
     }).join('');
@@ -471,9 +722,7 @@
     if (kota && keranjang.kurir) {
       document.getElementById('rOngkir').textContent = 'Menghitung…';
       try {
-        keranjang.ongkir = await simulasiApiKiriminAja({
-          tujuan: kota, kurir: keranjang.kurir, berat_gram: (keranjang.produk.berat_gram || 200) * keranjang.jumlah
-        });
+        keranjang.ongkir = await simulasiApiKiriminAja({ tujuan: kota, kurir: keranjang.kurir, berat_gram: (keranjang.produk.berat_gram || 200) * keranjang.jumlah });
       } catch (e) {
         tampilkanToast('Gagal menghitung ongkir: ' + e.message);
       }
@@ -481,19 +730,16 @@
     perbaruiRingkasan();
   }
 
-  /* Hitung total (PERKIRAAN di browser). Angka final dihitung ulang
-     oleh database saat pesanan dibuat, jadi tidak bisa diakali. */
+  /* Hitung total (PERKIRAAN di browser). Angka final dihitung ulang database. */
   function hitungTotal() {
     const p = keranjang.produk;
     const subtotal = p.harga * keranjang.jumlah;
     const ongkir = keranjang.ongkir ? keranjang.ongkir.ongkir : 0;
     let diskon = 0, potOngkir = 0;
-
     const fo = pengaturan.free_ongkir_non_cod || {};
     if (keranjang.metode !== 'COD' && fo.aktif && subtotal >= Number(fo.min_belanja || 0)) {
       potOngkir = Number(fo.maks) > 0 ? Math.min(ongkir, Number(fo.maks)) : ongkir;
     }
-
     let pesanVoucher = '';
     const v = keranjang.voucher;
     if (v) {
@@ -510,26 +756,23 @@
     const p = keranjang.produk;
     if (!p) return;
     const t = hitungTotal();
-
     document.getElementById('ringkasanProduk').innerHTML = `
-      <img src="${escapeHtml(fotoUtama(p))}" class="w-16 h-16 rounded-lg object-cover" alt="" />
-      <div class="flex-1">
+      <img src="${escapeHtml(fotoUtama(p))}" class="w-16 h-16 rounded-xl object-cover bg-sand" alt="" />
+      <div class="flex-1 min-w-0">
         <div class="font-semibold leading-tight">${escapeHtml(p.nama)}</div>
-        <div class="text-sm text-slate-500">${rupiah(p.harga)}</div>
+        <div class="text-sm text-ink/50">${rupiah(p.harga)}</div>
       </div>
-      <div class="flex items-center border border-slate-300 rounded-xl">
-        <button type="button" onclick="ubahJumlah(-1)" class="w-8 h-8 text-lg">−</button>
-        <span class="w-8 text-center font-semibold">${keranjang.jumlah}</span>
-        <button type="button" onclick="ubahJumlah(1)" class="w-8 h-8 text-lg">+</button>
+      <div class="flex items-center border border-ink/20 rounded-full">
+        <button type="button" onclick="ubahJumlah(-1)" class="w-8 h-8 text-lg" aria-label="Kurangi">−</button>
+        <span class="w-7 text-center font-semibold">${keranjang.jumlah}</span>
+        <button type="button" onclick="ubahJumlah(1)" class="w-8 h-8 text-lg" aria-label="Tambah">+</button>
       </div>`;
-
     document.getElementById('rJumlah').textContent = `(${keranjang.jumlah} barang)`;
     document.getElementById('rSubtotal').textContent = rupiah(t.subtotal);
     document.getElementById('barisDiskon').classList.toggle('hidden', !t.diskon);
     document.getElementById('rDiskon').textContent = '−' + rupiah(t.diskon);
     document.getElementById('barisPotOngkir').classList.toggle('hidden', !t.potOngkir);
     document.getElementById('rPotOngkir').textContent = '−' + rupiah(t.potOngkir);
-
     if (keranjang.ongkir) {
       document.getElementById('rOngkir').textContent = rupiah(t.ongkir);
       document.getElementById('rKurirInfo').textContent = `(${keranjang.kurir})`;
@@ -541,24 +784,20 @@
     }
     document.getElementById('labelTotal').textContent = keranjang.metode === 'COD' ? 'Total bayar ke kurir' : 'Total transfer';
     document.getElementById('rTotal').textContent = rupiah(t.total);
-
     const pesan = document.getElementById('pesanVoucher');
     if (keranjang.voucher) {
-      pesan.className = 'text-xs mt-1 ' + (t.pesanVoucher ? 'text-amber-700' : 'text-emerald-700');
+      pesan.className = 'text-xs mt-1 ' + (t.pesanVoucher ? 'text-amber-700' : 'text-brass-dark font-semibold');
       pesan.innerHTML = (t.pesanVoucher || `✓ Voucher ${escapeHtml(keranjang.voucher.kode)} dipakai`) +
-        ' · <button type="button" class="underline" onclick="hapusVoucher()">hapus</button>';
+        ' · <button type="button" class="underline font-normal" onclick="hapusVoucher()">hapus</button>';
     }
   }
 
-  // Cek kode voucher ke database
   async function pakaiVoucher() {
     const kode = document.getElementById('inVoucher').value.trim().toUpperCase();
     const pesan = document.getElementById('pesanVoucher');
     if (!kode || !keranjang.produk) return;
     if (!sb) { pesan.className = 'text-xs mt-1 text-red-600'; pesan.textContent = 'Voucher belum bisa dipakai.'; return; }
-    const { data, error } = await sb.rpc('cek_voucher', {
-      p_kode: kode, p_subtotal: keranjang.produk.harga * keranjang.jumlah, p_metode: keranjang.metode
-    });
+    const { data, error } = await sb.rpc('cek_voucher', { p_kode: kode, p_subtotal: keranjang.produk.harga * keranjang.jumlah, p_metode: keranjang.metode });
     if (error || !data || !data.valid) {
       keranjang.voucher = null;
       pesan.className = 'text-xs mt-1 text-red-600';
@@ -595,24 +834,16 @@
     return data;
   }
 
-  /* Tombol "Buat Pesanan": database menghitung total final & menyimpan,
-     lalu WhatsApp penjual dibuka dengan detail pesanan. */
   async function buatPesanan() {
     const form = ambilDataForm();
     if (!form) return;
-
     const tombol = document.getElementById('btnPesan');
     tombol.disabled = true;
     tombol.textContent = 'Memproses…';
 
     const kiriman = {
-      ...form,
-      produk_id: keranjang.produk.id,
-      jumlah: keranjang.jumlah,
-      metode_bayar: keranjang.metode,
-      kurir: keranjang.kurir,
-      ongkir: keranjang.ongkir.ongkir,
-      kode_voucher: keranjang.voucher ? keranjang.voucher.kode : null
+      ...form, produk_id: keranjang.produk.id, jumlah: keranjang.jumlah, metode_bayar: keranjang.metode,
+      kurir: keranjang.kurir, ongkir: keranjang.ongkir.ongkir, kode_voucher: keranjang.voucher ? keranjang.voucher.kode : null
     };
 
     let hasil = null;
@@ -621,7 +852,6 @@
       const { data, error } = await sb.rpc('buat_pesanan', { p: kiriman });
       if (error) {
         console.error('Gagal membuat pesanan:', error);
-        // Pesan dari database (mis. voucher habis) ditampilkan ke pembeli
         const pesanDb = error.message && !/fetch|network/i.test(error.message) ? error.message : '';
         if (pesanDb) {
           tombol.disabled = false;
@@ -634,43 +864,35 @@
         tersimpan = true;
       }
     }
-    // Cadangan kalau database tidak bisa dihubungi: hitung di browser, kirim via WA saja
     if (!hasil) {
       const t = hitungTotal();
       hasil = {
         resi: 'SBY' + Date.now().toString().slice(-8), no_hp: form.no_hp, produk_nama: keranjang.produk.nama,
         harga: keranjang.produk.harga, jumlah: keranjang.jumlah, subtotal: t.subtotal, diskon: t.diskon,
-        kode_voucher: kiriman.kode_voucher, ongkir: t.ongkir, potongan_ongkir: t.potOngkir, total: t.total,
-        metode_bayar: keranjang.metode
+        kode_voucher: kiriman.kode_voucher, ongkir: t.ongkir, potongan_ongkir: t.potOngkir, total: t.total, metode_bayar: keranjang.metode
       };
     }
 
-    // Buka WhatsApp penjual
     const teks = [
-      `Halo ${CFG.NAMA_TOKO}, saya mau pesan:`,
-      '',
+      `Halo ${CFG.NAMA_TOKO}, saya mau pesan:`, '',
       `🔖 No. Pesanan : ${hasil.resi}`,
       `🛍️ Produk : ${hasil.produk_nama} x${hasil.jumlah}`,
       `👤 Nama   : ${form.nama}`,
       `📱 No HP  : ${hasil.no_hp}`,
       `🏠 Alamat : ${form.alamat}, ${form.kota}`,
       `🚚 Kurir  : ${keranjang.kurir}`,
-      `💳 Bayar  : ${NAMA_METODE[hasil.metode_bayar]}`,
-      '',
+      `💳 Bayar  : ${NAMA_METODE[hasil.metode_bayar]}`, '',
       `Subtotal : ${rupiah(hasil.subtotal)}`,
       hasil.diskon ? `Diskon (${hasil.kode_voucher}) : −${rupiah(hasil.diskon)}` : null,
       `Ongkir   : ${rupiah(hasil.ongkir)}`,
       hasil.potongan_ongkir ? `Gratis ongkir : −${rupiah(hasil.potongan_ongkir)}` : null,
-      `*Total ${hasil.metode_bayar === 'COD' ? 'Tagihan COD' : 'Transfer'} : ${rupiah(hasil.total)}*`,
-      '',
+      `*Total ${hasil.metode_bayar === 'COD' ? 'Tagihan COD' : 'Transfer'} : ${rupiah(hasil.total)}*`, '',
       hasil.metode_bayar === 'COD' ? 'Mohon diproses, terima kasih 🙏' : 'Saya akan kirim bukti pembayaran di chat ini 🙏'
     ].filter((b) => b !== null).join('\n');
-    const urlWA = `https://wa.me/${CFG.NOMOR_WA_PENJUAL}?text=${encodeURIComponent(teks)}`;
+    const urlWA = linkWa(teks);
 
     tampilkanHasilPesanan(hasil, tersimpan, urlWA);
-    // COD: langsung buka WA. Non-COD: pembeli lihat info rekening dulu, lalu klik tombol WA.
     if (hasil.metode_bayar === 'COD') window.open(urlWA, '_blank');
-
     tombol.disabled = false;
     tombol.textContent = 'Buat Pesanan';
   }
@@ -684,8 +906,8 @@
       infoBayar = `
         <div class="mt-3 font-semibold">Silakan transfer ${rupiah(h.total)} ke:</div>
         ${rek.map((r) => `
-          <div class="mt-2 rounded-lg bg-white border border-emerald-200 p-3">
-            <div class="text-xs text-slate-500">${escapeHtml(r.bank)} a.n. ${escapeHtml(r.atas_nama)}</div>
+          <div class="mt-2 rounded-xl bg-white border border-ink/10 p-3">
+            <div class="text-xs text-ink/50">${escapeHtml(r.bank)} a.n. ${escapeHtml(r.atas_nama)}</div>
             <div class="flex justify-between items-center">
               <b class="font-mono text-base select-all">${escapeHtml(r.nomor)}</b>
               <button type="button" onclick="navigator.clipboard.writeText('${escapeHtml(r.nomor)}'); tampilkanToast('Nomor rekening disalin')" class="text-xs underline">Salin</button>
@@ -695,27 +917,29 @@
       const gambar = pengaturan.pembayaran.qris.gambar;
       infoBayar = `
         <div class="mt-3 font-semibold">Scan QRIS dan bayar ${rupiah(h.total)}:</div>
-        ${gambar ? `<img src="${escapeHtml(gambar)}" alt="QRIS" class="mt-2 w-full max-w-xs mx-auto rounded-lg border" />` : '<p class="text-xs text-amber-700">Gambar QRIS belum tersedia, hubungi penjual via WA.</p>'}`;
+        ${gambar ? `<img src="${escapeHtml(gambar)}" alt="QRIS" class="mt-2 w-full max-w-xs mx-auto rounded-xl border bg-white" />` : '<p class="text-xs text-amber-700">Gambar QRIS belum tersedia, hubungi penjual via WA.</p>'}`;
     }
     kotak.innerHTML = `
-      <div class="font-semibold text-emerald-700">✅ Pesanan dibuat</div>
+      <div class="font-semibold">✅ Pesanan dibuat</div>
       <div class="mt-1">No. pesanan: <b class="font-mono">${escapeHtml(h.resi)}</b></div>
-      <div>Total: <b>${rupiah(h.total)}</b> (${NAMA_METODE[h.metode_bayar]})</div>
+      <div>Total: <b>${rupiah(h.total)}</b> · ${NAMA_METODE[h.metode_bayar]}</div>
       ${infoBayar}
-      <a href="${urlWA}" target="_blank" class="mt-3 block text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg">
+      <a href="${urlWA}" target="_blank" class="mt-3 block text-center bg-[#25D366] hover:brightness-95 text-white font-semibold py-2.5 rounded-full">
         ${h.metode_bayar === 'COD' ? 'Buka WhatsApp lagi' : 'Kirim bukti bayar via WhatsApp'}
       </a>
       ${tersimpan
-        ? `<button onclick="isiLacak('${h.resi}')" class="mt-2 underline text-emerald-700">Lacak pesanan ini →</button>`
+        ? `<button onclick="isiLacak('${h.resi}')" class="mt-2 underline">Lacak pesanan ini →</button>`
         : '<div class="mt-2 text-xs text-amber-700">Catatan: pesanan belum tercatat di sistem lacak.</div>'}`;
+    kotak.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   /* =====================================================================
-     3) LACAK PESANAN + ULASAN
+     LACAK PESANAN + ULASAN
      ===================================================================== */
   function isiLacak(resi) {
+    tutupPanel('panelCheckout');
     document.getElementById('inLacak').value = resi;
-    document.getElementById('lacak').scrollIntoView({ behavior: 'smooth' });
+    bukaPanel('panelLacak');
     lacakPesanan();
   }
 
@@ -723,15 +947,15 @@
     const kataKunci = document.getElementById('inLacak').value.trim();
     const wadah = document.getElementById('hasilLacak');
     if (!kataKunci) { tampilkanToast('Masukkan nomor HP atau nomor pesanan.'); return; }
-    if (!sb) { wadah.innerHTML = '<p class="text-slate-500 text-sm">Fitur lacak belum aktif.</p>'; return; }
-    wadah.innerHTML = '<p class="text-slate-400 text-sm">Mencari…</p>';
+    if (!sb) { wadah.innerHTML = '<p class="text-ink/50 text-sm">Fitur lacak belum aktif.</p>'; return; }
+    wadah.innerHTML = '<p class="text-ink/40 text-sm">Mencari…</p>';
     const adaHuruf = /[a-z]/i.test(kataKunci);
     const { data, error } = await sb.rpc('lacak_pesanan', {
       p_hp: adaHuruf ? null : normalisasiHp(kataKunci),
       p_resi: adaHuruf ? kataKunci.toUpperCase().replace(/[^A-Z0-9]/g, '') : null
     });
-    if (error) { console.error(error); wadah.innerHTML = '<p class="text-red-500 text-sm">Terjadi kesalahan. Coba lagi sebentar.</p>'; return; }
-    if (!data || !data.length) { wadah.innerHTML = '<p class="text-slate-500 text-sm">Pesanan tidak ditemukan. Periksa kembali nomor HP / nomor pesanan.</p>'; return; }
+    if (error) { console.error(error); wadah.innerHTML = '<p class="text-red-600 text-sm">Terjadi kesalahan. Coba lagi sebentar.</p>'; return; }
+    if (!data || !data.length) { wadah.innerHTML = '<p class="text-ink/50 text-sm">Pesanan tidak ditemukan. Periksa kembali nomor HP / nomor pesanan.</p>'; return; }
     hasilLacak = {};
     data.forEach((p) => { hasilLacak[p.resi] = p; });
     const sudahDiulas = new Set(semuaUlasan.map((u) => u.pesanan_resi));
@@ -742,28 +966,26 @@
     const urutan = p.metode_bayar === 'COD' ? ['Dikemas', 'Dikirim', 'Selesai'] : ['Menunggu Bayar', 'Dikemas', 'Dikirim', 'Selesai'];
     const idx = urutan.indexOf(p.status);
     const langkah = p.status === 'Dibatalkan'
-      ? '<div class="w-full text-center text-sm font-semibold text-red-600 bg-red-50 rounded-lg py-2">Pesanan dibatalkan</div>'
+      ? '<div class="w-full text-center text-sm font-semibold text-red-700 bg-red-50 rounded-xl py-2">Pesanan dibatalkan</div>'
       : urutan.map((s, i) => `
           <div class="flex-1 text-center">
-            <div class="mx-auto w-8 h-8 rounded-full grid place-items-center text-sm font-bold ${i <= idx ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">${i + 1}</div>
-            <div class="text-xs mt-1 ${i <= idx ? 'text-emerald-700 font-semibold' : 'text-slate-400'}">${s}</div>
-          </div>`).join('<div class="flex-1 h-0.5 bg-slate-200 mt-4"></div>');
-
+            <div class="mx-auto w-8 h-8 rounded-full grid place-items-center text-sm font-bold ${i <= idx ? 'bg-ink text-bone' : 'bg-sand text-ink/40'}">${i <= idx ? '✓' : i + 1}</div>
+            <div class="text-[11px] mt-1 leading-tight ${i <= idx ? 'font-semibold' : 'text-ink/40'}">${s}</div>
+          </div>`).join('<div class="flex-1 h-0.5 bg-sand mt-4"></div>');
     let bagianBawah = '';
     if (p.status === 'Selesai') {
-      bagianBawah = sudahDiulas ? '<p class="mt-4 text-sm text-emerald-700">⭐ Terima kasih, ulasan Anda sudah tersimpan.</p>' : formUlasan(p);
+      bagianBawah = sudahDiulas ? '<p class="mt-4 text-sm text-brass-dark font-semibold">⭐ Terima kasih, ulasan Anda sudah tersimpan.</p>' : formUlasan(p);
     } else if (p.status === 'Menunggu Bayar') {
       bagianBawah = '<p class="mt-4 text-sm text-amber-700">Menunggu pembayaran. Kirim bukti bayar ke WhatsApp penjual supaya pesanan segera diproses.</p>';
     }
-
     return `
-      <div class="rounded-xl border border-slate-200 p-4">
+      <div class="rounded-2xl bg-white border border-ink/10 p-4">
         <div class="flex flex-wrap justify-between gap-2 text-sm">
-          <div><span class="text-slate-500">No. Pesanan</span> <b class="font-mono">${escapeHtml(p.resi)}</b></div>
-          <div class="text-slate-500">${escapeHtml(p.kurir)} • ${escapeHtml(p.kota)}</div>
+          <div><span class="text-ink/50">No. Pesanan</span> <b class="font-mono">${escapeHtml(p.resi)}</b></div>
+          <div class="text-ink/50">${escapeHtml(p.kurir)} · ${escapeHtml(p.kota)}</div>
         </div>
         <div class="mt-1 font-semibold">${escapeHtml(p.produk_nama)} x${p.jumlah || 1}</div>
-        <div class="text-sm text-slate-500">Total ${rupiah(p.total)} • ${NAMA_METODE[p.metode_bayar] || p.metode_bayar}</div>
+        <div class="text-sm text-ink/50">Total ${rupiah(p.total)} · ${NAMA_METODE[p.metode_bayar] || p.metode_bayar}</div>
         ${p.resi_kurir ? `<div class="mt-2 text-sm">No. Resi ${escapeHtml(p.kurir)}: <b class="font-mono select-all">${escapeHtml(p.resi_kurir)}</b></div>` : ''}
         <div class="flex items-start mt-4">${langkah}</div>
         ${bagianBawah}
@@ -772,14 +994,14 @@
 
   function formUlasan(p) {
     const tombolBintang = [1, 2, 3, 4, 5].map((n) => `
-      <button type="button" data-nilai="${n}" onclick="pilihBintang('${p.resi}', ${n})" class="bintang-${p.resi} text-3xl text-slate-300 hover:scale-110 transition">★</button>`).join('');
+      <button type="button" data-nilai="${n}" onclick="pilihBintang('${p.resi}', ${n})" class="bintang-${p.resi} text-3xl text-ink/20 hover:scale-110 transition">★</button>`).join('');
     return `
-      <div class="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4">
+      <div class="mt-4 rounded-2xl bg-sand p-4">
         <div class="font-semibold text-sm">Pesanan selesai! Beri ulasan:</div>
         <div class="flex gap-1 mt-1">${tombolBintang}</div>
         <input type="hidden" id="rating-${p.resi}" value="0" />
-        <textarea id="komentar-${p.resi}" rows="2" maxlength="500" placeholder="Ceritakan pengalaman Anda…" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
-        <button onclick="kirimUlasan('${p.resi}')" class="mt-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">Kirim Ulasan</button>
+        <textarea id="komentar-${p.resi}" rows="2" maxlength="500" placeholder="Ceritakan pengalaman Anda…" class="mt-2 w-full rounded-xl border border-ink/20 px-3 py-2 text-sm"></textarea>
+        <button onclick="kirimUlasan('${p.resi}')" class="mt-2 bg-ink text-bone text-sm font-semibold px-5 py-2 rounded-full">Kirim Ulasan</button>
       </div>`;
   }
 
@@ -787,8 +1009,8 @@
     document.getElementById('rating-' + resi).value = nilai;
     document.querySelectorAll('.bintang-' + resi).forEach((b) => {
       const aktif = Number(b.dataset.nilai) <= nilai;
-      b.classList.toggle('text-amber-400', aktif);
-      b.classList.toggle('text-slate-300', !aktif);
+      b.classList.toggle('text-brass', aktif);
+      b.classList.toggle('text-ink/20', !aktif);
     });
   }
 
@@ -813,6 +1035,10 @@
     document.querySelectorAll('.namaTokoFooter').forEach((el) => { el.textContent = CFG.NAMA_TOKO; });
     document.getElementById('tahun').textContent = new Date().getFullYear();
 
+    // Semua tombol WhatsApp umum
+    const waUmum = linkWa(`Halo ${CFG.NAMA_TOKO}, saya mau tanya tentang produk Norvine.`);
+    ['ctaWaHero', 'ctaWaBawah', 'linkWaFooter', 'tombolWaMelayang'].forEach((id) => { document.getElementById(id).href = waUmum; });
+
     const keyTerisi = CFG.SUPABASE_ANON_KEY && !CFG.SUPABASE_ANON_KEY.startsWith('TEMPEL');
     try {
       if (CFG.SUPABASE_URL && keyTerisi && window.supabase) sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
@@ -832,8 +1058,14 @@
     select.addEventListener('change', hitungOngkir);
     document.getElementById('inVoucher').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); pakaiVoucher(); } });
     document.getElementById('inLacak').addEventListener('keydown', (e) => { if (e.key === 'Enter') lacakPesanan(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') tutupDetail(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const terbuka = [...document.querySelectorAll('.panel:not(.hidden)')].pop();
+      if (terbuka) tutupPanel(terbuka.id);
+    });
 
+    renderFaq();
+    renderKepercayaan();
     muatSemua();
   }
 

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
   <title>Admin — F3A Store</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
   <script src="config.js"></script>
@@ -16,6 +17,7 @@
   <div id="layarLogin" class="hidden min-h-screen grid place-items-center p-4">
     <form id="formLogin" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 w-full max-w-sm space-y-4">
       <div>
+        <img src="logo.png" alt="" class="w-16 h-16 mb-2" />
         <h1 class="text-xl font-bold">Admin <span class="namaToko">F3A Store</span></h1>
         <p class="text-sm text-slate-500">Masuk untuk mengelola pesanan dan produk.</p>
       </div>
@@ -36,7 +38,7 @@
   <div id="layarAdmin" class="hidden">
     <header class="sticky top-0 z-30 bg-white border-b border-slate-200">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-        <div class="font-extrabold">⚙️ Admin <span class="namaToko">F3A Store</span></div>
+        <div class="flex items-center gap-2 font-extrabold"><img src="logo.png" alt="" class="w-8 h-8" /> Admin <span class="namaToko">F3A Store</span></div>
         <div class="flex items-center gap-2 text-sm">
           <a href="index.html" target="_blank" class="px-3 py-2 rounded-lg hover:bg-slate-100">Lihat Toko ↗</a>
           <button onclick="keluar()" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200">Keluar</button>
