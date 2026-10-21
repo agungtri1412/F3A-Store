@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Admin — F3A Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
+  <script src="config.js"></script>
+</head>
+
+<body class="bg-slate-100 text-slate-800 antialiased">
+
+  <!-- ===================== LAYAR LOGIN ===================== -->
+  <div id="layarLogin" class="hidden min-h-screen grid place-items-center p-4">
+    <form id="formLogin" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 w-full max-w-sm space-y-4">
+      <div>
+        <h1 class="text-xl font-bold">Admin <span class="namaToko">F3A Store</span></h1>
+        <p class="text-sm text-slate-500">Masuk untuk mengelola pesanan dan produk.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="email">Email</label>
+        <input id="email" type="email" required autocomplete="username" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="password">Password</label>
+        <input id="password" type="password" required autocomplete="current-password" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+      <button id="btnLogin" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl">Masuk</button>
+      <p id="pesanLogin" class="text-sm text-red-600"></p>
+    </form>
+  </div>
+
+  <!-- ===================== LAYAR ADMIN ===================== -->
+  <div id="layarAdmin" class="hidden">
+    <header class="sticky top-0 z-30 bg-white border-b border-slate-200">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div class="font-extrabold">⚙️ Admin <span class="namaToko">F3A Store</span></div>
+        <div class="flex items-center gap-2 text-sm">
+          <a href="index.html" target="_blank" class="px-3 py-2 rounded-lg hover:bg-slate-100">Lihat Toko ↗</a>
+          <button onclick="keluar()" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200">Keluar</button>
+        </div>
+      </div>
+      <nav class="max-w-6xl mx-auto px-4 flex gap-1 text-sm font-medium">
+        <button data-tab="pesanan" onclick="gantiTab('pesanan')" class="tab px-4 py-2.5 border-b-2">📦 Pesanan</button>
+        <button data-tab="produk"  onclick="gantiTab('produk')"  class="tab px-4 py-2.5 border-b-2">🛍️ Produk</button>
+        <button data-tab="ulasan"  onclick="gantiTab('ulasan')"  class="tab px-4 py-2.5 border-b-2">⭐ Ulasan</button>
+      </nav>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+
+      <!-- ---------- TAB PESANAN ---------- -->
+      <section id="tab-pesanan" class="isi-tab">
+        <div class="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-4">
+          <div id="filterStatus" class="flex flex-wrap gap-2"></div>
+          <div class="flex gap-2">
+            <input id="cariPesanan" type="search" placeholder="Cari nama / HP / no. pesanan / resi" class="w-full sm:w-72 rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white" />
+            <button onclick="muatPesanan()" title="Muat ulang" class="px-3 rounded-xl bg-white border border-slate-300 hover:bg-slate-50">↻</button>
+          </div>
+        </div>
+        <div id="daftarPesanan" class="space-y-3"></div>
+      </section>
+
+      <!-- ---------- TAB PRODUK ---------- -->
+      <section id="tab-produk" class="isi-tab hidden">
+        <div class="flex justify-between items-center mb-4">
+          <p class="text-sm text-slate-500">Produk nonaktif tidak tampil di toko.</p>
+          <button onclick="bukaFormProduk(null)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl">+ Tambah Produk</button>
+        </div>
+        <div id="daftarProdukAdmin" class="grid gap-4 grid-cols-2 lg:grid-cols-4"></div>
+      </section>
+
+      <!-- ---------- TAB ULASAN ---------- -->
+      <section id="tab-ulasan" class="isi-tab hidden">
+        <div id="daftarUlasanAdmin" class="space-y-3"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ===================== POP-UP EDIT PRODUK ===================== -->
+  <div id="modalProduk" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" onclick="tutupFormProduk()"></div>
+    <div class="relative bg-white w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl sm:m-6 p-5 sm:p-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 id="judulFormProduk" class="text-lg font-bold">Edit Produk</h2>
+        <button onclick="tutupFormProduk()" class="w-9 h-9 rounded-full hover:bg-slate-100 text-2xl leading-none">×</button>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1" for="fNama">Nama Produk</label>
+        <input id="fNama" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="fHarga">Harga (Rp)</label>
+          <input id="fHarga" type="number" min="0" step="500" placeholder="85000" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="fBerat">Berat (gram)</label>
+          <input id="fBerat" type="number" min="1" placeholder="200" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="fUrutan">Urutan</label>
+          <input id="fUrutan" type="number" placeholder="1" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+      </div>
+
+      <div>
+        <div class="flex justify-between items-end mb-1">
+          <span class="block text-sm font-medium">Foto Produk</span>
+          <span class="text-xs text-slate-400">Foto pertama = foto utama di katalog</span>
+        </div>
+        <div id="fotoForm" class="grid grid-cols-3 sm:grid-cols-4 gap-3"></div>
+        <label class="mt-3 inline-flex items-center gap-2 cursor-pointer bg-slate-100 hover:bg-slate-200 text-sm font-medium px-4 py-2.5 rounded-xl">
+          📷 Tambah Foto
+          <input id="inputFoto" type="file" accept="image/*" multiple class="hidden" />
+        </label>
+        <span id="statusUpload" class="ml-2 text-sm text-slate-500"></span>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1" for="fDeskripsi">Deskripsi Lengkap</label>
+        <textarea id="fDeskripsi" rows="10" placeholder="Isi, ukuran, cara pakai, no. BPOM, dll. Tekan Enter untuk baris baru." class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm">
+        <input id="fAktif" type="checkbox" class="w-4 h-4" checked />
+        Tampilkan di toko (aktif)
+      </label>
+
+      <div class="flex gap-3 pt-2">
+        <button onclick="tutupFormProduk()" class="flex-1 bg-slate-100 hover:bg-slate-200 font-semibold py-3 rounded-xl">Batal</button>
+        <button id="btnSimpanProduk" onclick="simpanProduk()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg opacity-0 pointer-events-none transition-opacity z-50"></div>
+
+
+  <script>
+  /* =====================================================================
+     PENGATURAN (dari config.js)
+     ===================================================================== */
+  const CFG = Object.assign({ NAMA_TOKO: 'F3A Store', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' }, window.KONFIG || {});
+  const BUCKET_FOTO = 'produk';            // nama tempat penyimpanan foto di Supabase Storage
+  const STATUS = ['Dikemas', 'Dikirim', 'Selesai'];
+  const WARNA_STATUS = {
+    Dikemas: 'bg-amber-100 text-amber-800',
+    Dikirim: 'bg-sky-100 text-sky-800',
+    Selesai: 'bg-emerald-100 text-emerald-800'
+  };
+
+  let sb = null;
+  let pesananData = [];
+  let produkData = [];
+  let filterAktif = 'Semua';
+  let idProdukEdit = null;   // null = produk baru
+  let fotoForm = [];         // daftar link foto di form edit
+  let fotoDihapus = [];      // foto yang dihapus dari form (dihapus dari storage saat Simpan)
+
+  /* ---------- alat bantu ---------- */
+  const rupiah = (n) => 'Rp' + Number(n || 0).toLocaleString('id-ID');
+  const tanggal = (t) => new Date(t).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  function escapeHtml(teks) {
+    return String(teks ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function tampilkanToast(pesan) {
+    const t = document.getElementById('toast');
+    t.textContent = pesan;
+    t.classList.remove('opacity-0');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.add('opacity-0'), 3000);
+  }
+  const linkToko = () => location.origin;   // alamat toko, untuk dicantumkan di pesan WA
+
+  /* =====================================================================
+     LOGIN
+     ===================================================================== */
+  function tampilkanLogin(pesan) {
+    document.getElementById('layarAdmin').classList.add('hidden');
+    document.getElementById('layarLogin').classList.remove('hidden');
+    document.getElementById('pesanLogin').textContent = pesan || '';
+  }
+
+  async function masukDashboard() {
+    // Pastikan akun yang login terdaftar di tabel "admin"
+    const { data: isAdmin, error } = await sb.rpc('is_admin');
+    if (error || !isAdmin) {
+      if (error) console.error(error);
+      await sb.auth.signOut();
+      tampilkanLogin('Akun ini tidak terdaftar sebagai admin.');
+      return;
+    }
+    document.getElementById('layarLogin').classList.add('hidden');
+    document.getElementById('layarAdmin').classList.remove('hidden');
+    gantiTab('pesanan');
+  }
+
+  async function keluar() {
+    await sb.auth.signOut();
+    tampilkanLogin('Anda sudah keluar.');
+  }
+
+  /* =====================================================================
+     TAB
+     ===================================================================== */
+  function gantiTab(nama) {
+    document.querySelectorAll('.isi-tab').forEach((el) => el.classList.add('hidden'));
+    document.getElementById('tab-' + nama).classList.remove('hidden');
+    document.querySelectorAll('.tab').forEach((b) => {
+      const aktif = b.dataset.tab === nama;
+      b.classList.toggle('border-emerald-600', aktif);
+      b.classList.toggle('text-emerald-700', aktif);
+      b.classList.toggle('border-transparent', !aktif);
+      b.classList.toggle('text-slate-500', !aktif);
+    });
+    if (nama === 'pesanan') muatPesanan();
+    if (nama === 'produk') muatProduk();
+    if (nama === 'ulasan') muatUlasan();
+  }
+
+  /* =====================================================================
+     PESANAN
+     ===================================================================== */
+  async function muatPesanan() {
+    document.getElementById('daftarPesanan').innerHTML = '<p class="text-slate-400">Memuat…</p>';
+    const { data, error } = await sb.from('pesanan').select('*').order('created_at', { ascending: false }).limit(500);
+    if (error) {
+      console.error(error);
+      document.getElementById('daftarPesanan').innerHTML = '<p class="text-red-500">Gagal memuat pesanan.</p>';
+      return;
+    }
+    pesananData = data || [];
+    renderPesanan();
+  }
+
+  function renderPesanan() {
+    // Tombol filter + jumlah per status
+    const jumlah = { Semua: pesananData.length };
+    STATUS.forEach((s) => { jumlah[s] = pesananData.filter((p) => p.status === s).length; });
+    document.getElementById('filterStatus').innerHTML = ['Semua', ...STATUS].map((s) => `
+      <button onclick="filterAktif='${s}'; renderPesanan()" class="px-3 py-1.5 rounded-full text-sm font-medium ${filterAktif === s ? 'bg-slate-900 text-white' : 'bg-white border border-slate-300'}">
+        ${s} <span class="opacity-70">${jumlah[s]}</span>
+      </button>`).join('');
+
+    const cari = document.getElementById('cariPesanan').value.trim().toLowerCase();
+    const tampil = pesananData.filter((p) =>
+      (filterAktif === 'Semua' || p.status === filterAktif) &&
+      (!cari || [p.nama, p.no_hp, p.resi, p.resi_kurir].some((v) => String(v || '').toLowerCase().includes(cari)))
+    );
+
+    const wadah = document.getElementById('daftarPesanan');
+    if (!tampil.length) { wadah.innerHTML = '<p class="text-slate-400">Tidak ada pesanan.</p>'; return; }
+
+    wadah.innerHTML = tampil.map((p) => `
+      <div class="bg-white rounded-2xl border border-slate-200 p-4">
+        <div class="flex flex-wrap justify-between gap-2">
+          <div>
+            <span class="font-mono font-bold">${escapeHtml(p.resi)}</span>
+            <span class="ml-2 text-xs px-2 py-0.5 rounded-full ${WARNA_STATUS[p.status] || ''}">${escapeHtml(p.status)}</span>
+          </div>
+          <div class="text-xs text-slate-500">${tanggal(p.created_at)}</div>
+        </div>
+
+        <div class="grid sm:grid-cols-3 gap-3 mt-3 text-sm">
+          <div>
+            <div class="font-semibold">${escapeHtml(p.nama)}</div>
+            <a href="https://wa.me/${escapeHtml(p.no_hp)}" target="_blank" class="text-emerald-700 underline">${escapeHtml(p.no_hp)}</a>
+            <div class="text-slate-500 mt-1">${escapeHtml(p.alamat)}, ${escapeHtml(p.kota)}</div>
+          </div>
+          <div>
+            <div>${escapeHtml(p.produk_nama)}</div>
+            <div class="text-slate-500">${escapeHtml(p.kurir)} (COD)</div>
+            <div class="text-slate-500">${rupiah(p.harga)} + ongkir ${rupiah(p.ongkir)}</div>
+            <div class="font-bold">Total COD ${rupiah(p.total)}</div>
+          </div>
+          <div class="space-y-2">
+            <select id="st-${p.id}" class="w-full rounded-lg border border-slate-300 px-2 py-2 bg-white">
+              ${STATUS.map((s) => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+            <input id="rk-${p.id}" type="text" value="${escapeHtml(p.resi_kurir || '')}" placeholder="No. resi kurir" class="w-full rounded-lg border border-slate-300 px-2 py-2 font-mono" />
+            <div class="flex gap-2">
+              <button onclick="simpanPesanan(${p.id})" class="flex-1 bg-slate-900 hover:bg-slate-700 text-white font-semibold py-2 rounded-lg">Simpan</button>
+              <button onclick="kirimUpdateWA(${p.id})" title="Kirim update status ke WA pembeli" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg">WA Pembeli</button>
+            </div>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  async function simpanPesanan(id) {
+    const status = document.getElementById('st-' + id).value;
+    const resiKurir = document.getElementById('rk-' + id).value.trim() || null;
+    const { error } = await sb.from('pesanan').update({ status, resi_kurir: resiKurir }).eq('id', id);
+    if (error) { console.error(error); tampilkanToast('Gagal menyimpan.'); return; }
+    const p = pesananData.find((x) => x.id === id);
+    Object.assign(p, { status, resi_kurir: resiKurir });
+    renderPesanan();
+    tampilkanToast('Tersimpan. Klik "WA Pembeli" untuk mengabari pembeli.');
+  }
+
+  // Buka WA ke pembeli dengan pesan sesuai status pesanan (yang sudah disimpan)
+  function kirimUpdateWA(id) {
+    const p = pesananData.find((x) => x.id === id);
+    if (!p) return;
+    const sapaan = `Halo kak ${p.nama} 👋`;
+    let isi;
+    if (p.status === 'Dikemas') {
+      isi = [
+        sapaan, '',
+        `Pesanan kakak di ${CFG.NAMA_TOKO} sudah kami terima dan sedang dikemas 📦`, '',
+        `No. Pesanan : ${p.resi}`,
+        `Produk      : ${p.produk_nama}`,
+        `Kurir       : ${p.kurir} (COD)`,
+        `Total COD   : ${rupiah(p.total)}`, '',
+        'Kami kabari lagi setelah paket dikirim ya kak. Terima kasih 🙏'
+      ];
+    } else if (p.status === 'Dikirim') {
+      isi = [
+        sapaan, '',
+        `Paket kakak sudah dikirim 🚚`, '',
+        `No. Pesanan : ${p.resi}`,
+        `Kurir       : ${p.kurir}`,
+        p.resi_kurir ? `No. Resi    : ${p.resi_kurir}` : null,
+        `Total COD   : ${rupiah(p.total)}`, '',
+        `Cek status paket di ${linkToko()} (menu Lacak, masukkan no. pesanan).`,
+        'Mohon siapkan uang pas saat kurir datang ya kak 🙏'
+      ];
+    } else {
+      isi = [
+        sapaan, '',
+        `Paket kakak sudah sampai. Terima kasih sudah belanja di ${CFG.NAMA_TOKO} 🙏`, '',
+        `Kalau berkenan, bantu kami dengan memberi ulasan di ${linkToko()}`,
+        `→ menu Lacak → masukkan no. pesanan ${p.resi}`
+      ];
+    }
+    const teks = isi.filter((baris) => baris !== null).join('\n');
+    window.open(`https://wa.me/${p.no_hp}?text=${encodeURIComponent(teks)}`, '_blank');
+  }
+
+  /* =====================================================================
+     PRODUK
+     ===================================================================== */
+  async function muatProduk() {
+    const { data, error } = await sb.from('produk').select('*').order('urutan').order('id');
+    if (error) { console.error(error); tampilkanToast('Gagal memuat produk.'); return; }
+    produkData = data || [];
+    renderProdukAdmin();
+  }
+
+  function renderProdukAdmin() {
+    const wadah = document.getElementById('daftarProdukAdmin');
+    if (!produkData.length) { wadah.innerHTML = '<p class="col-span-full text-slate-400">Belum ada produk.</p>'; return; }
+    wadah.innerHTML = produkData.map((p) => `
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col ${p.aktif ? '' : 'opacity-60'}">
+        <img src="${escapeHtml(p.foto[0] || 'https://placehold.co/400x400/f1f5f9/94a3b8?text=Belum+ada+foto')}" alt="" class="w-full aspect-square object-cover bg-slate-100" />
+        <div class="p-3 flex flex-col flex-1">
+          <div class="font-semibold leading-snug">${escapeHtml(p.nama)}</div>
+          <div class="text-emerald-700 font-bold">${rupiah(p.harga)}</div>
+          <div class="text-xs text-slate-500">${p.foto.length} foto • ${p.aktif ? 'Aktif' : 'Nonaktif'}</div>
+          <button onclick="bukaFormProduk(${p.id})" class="mt-auto pt-2 text-sm font-semibold text-emerald-700 text-left">✏️ Edit</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function bukaFormProduk(id) {
+    idProdukEdit = id;
+    const p = id ? produkData.find((x) => x.id === id) : null;
+    document.getElementById('judulFormProduk').textContent = p ? 'Edit Produk' : 'Tambah Produk';
+    document.getElementById('fNama').value = p ? p.nama : '';
+    document.getElementById('fHarga').value = p ? p.harga : '';
+    document.getElementById('fBerat').value = p ? p.berat_gram : 200;
+    document.getElementById('fUrutan').value = p ? p.urutan : produkData.length + 1;
+    document.getElementById('fDeskripsi').value = p ? p.deskripsi : '';
+    document.getElementById('fAktif').checked = p ? p.aktif : true;
+    fotoForm = p ? [...p.foto] : [];
+    fotoDihapus = [];
+    document.getElementById('statusUpload').textContent = '';
+    renderFotoForm();
+    document.getElementById('modalProduk').classList.remove('hidden');
+  }
+
+  function tutupFormProduk() {
+    document.getElementById('modalProduk').classList.add('hidden');
+  }
+
+  // Tampilkan foto-foto di form, dengan tombol geser kiri/kanan dan hapus
+  function renderFotoForm() {
+    const wadah = document.getElementById('fotoForm');
+    if (!fotoForm.length) {
+      wadah.innerHTML = '<p class="col-span-full text-sm text-slate-400">Belum ada foto.</p>';
+      return;
+    }
+    wadah.innerHTML = fotoForm.map((url, i) => `
+      <div class="relative rounded-xl overflow-hidden border-2 ${i === 0 ? 'border-emerald-500' : 'border-slate-200'}">
+        <img src="${escapeHtml(url)}" alt="" class="w-full aspect-square object-cover" />
+        ${i === 0 ? '<span class="absolute top-1 left-1 text-[10px] font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded">UTAMA</span>' : ''}
+        <div class="absolute bottom-0 inset-x-0 flex justify-between bg-black/50 text-white text-sm">
+          <button type="button" onclick="geserFoto(${i}, -1)" class="px-2 py-1 ${i === 0 ? 'invisible' : ''}" title="Geser ke kiri">◀</button>
+          <button type="button" onclick="hapusFoto(${i})" class="px-2 py-1" title="Hapus foto">✕</button>
+          <button type="button" onclick="geserFoto(${i}, 1)" class="px-2 py-1 ${i === fotoForm.length - 1 ? 'invisible' : ''}" title="Geser ke kanan">▶</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function geserFoto(i, arah) {
+    const j = i + arah;
+    if (j < 0 || j >= fotoForm.length) return;
+    [fotoForm[i], fotoForm[j]] = [fotoForm[j], fotoForm[i]];
+    renderFotoForm();
+  }
+
+  function hapusFoto(i) {
+    fotoDihapus.push(fotoForm[i]);
+    fotoForm.splice(i, 1);
+    renderFotoForm();
+  }
+
+  // Perkecil foto (maks 1200 px, JPEG) supaya hemat kuota & cepat dibuka di HP
+  async function kecilkanFoto(file, maks = 1200) {
+    try {
+      const img = await createImageBitmap(file);
+      const skala = Math.min(1, maks / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * skala);
+      canvas.height = Math.round(img.height * skala);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+      return blob || file;
+    } catch (e) {
+      return file;   // kalau gagal diperkecil, upload file aslinya
+    }
+  }
+
+  async function uploadFoto(files) {
+    const status = document.getElementById('statusUpload');
+    const daftar = Array.from(files);
+    for (let i = 0; i < daftar.length; i++) {
+      status.textContent = `Mengunggah ${i + 1}/${daftar.length}…`;
+      const blob = await kecilkanFoto(daftar[i]);
+      const jalur = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const { error } = await sb.storage.from(BUCKET_FOTO).upload(jalur, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+      if (error) {
+        console.error(error);
+        status.textContent = '';
+        tampilkanToast('Gagal mengunggah foto: ' + error.message);
+        return;
+      }
+      fotoForm.push(sb.storage.from(BUCKET_FOTO).getPublicUrl(jalur).data.publicUrl);
+      renderFotoForm();
+    }
+    status.textContent = '✓ Foto terunggah. Jangan lupa klik Simpan.';
+  }
+
+  // Ambil nama file di storage dari link foto (untuk dihapus)
+  function jalurDariUrl(url) {
+    const penanda = `/object/public/${BUCKET_FOTO}/`;
+    const i = url.indexOf(penanda);
+    return i === -1 ? null : decodeURIComponent(url.slice(i + penanda.length));
+  }
+
+  async function simpanProduk() {
+    const data = {
+      nama: document.getElementById('fNama').value.trim(),
+      harga: parseInt(document.getElementById('fHarga').value, 10),
+      berat_gram: parseInt(document.getElementById('fBerat').value, 10) || 200,
+      urutan: parseInt(document.getElementById('fUrutan').value, 10) || 0,
+      deskripsi: document.getElementById('fDeskripsi').value.trim(),
+      aktif: document.getElementById('fAktif').checked,
+      foto: fotoForm
+    };
+    if (!data.nama) { tampilkanToast('Nama produk wajib diisi.'); return; }
+    if (!(data.harga >= 0)) { tampilkanToast('Harga wajib diisi (angka saja, tanpa titik).'); return; }
+
+    const tombol = document.getElementById('btnSimpanProduk');
+    tombol.disabled = true;
+    tombol.textContent = 'Menyimpan…';
+
+    const { error } = idProdukEdit
+      ? await sb.from('produk').update(data).eq('id', idProdukEdit)
+      : await sb.from('produk').insert(data);
+
+    tombol.disabled = false;
+    tombol.textContent = 'Simpan';
+    if (error) { console.error(error); tampilkanToast('Gagal menyimpan produk.'); return; }
+
+    // Hapus file foto yang tadi dibuang dari form
+    const jalur = fotoDihapus.map(jalurDariUrl).filter(Boolean);
+    if (jalur.length) await sb.storage.from(BUCKET_FOTO).remove(jalur);
+
+    tutupFormProduk();
+    tampilkanToast('Produk tersimpan.');
+    muatProduk();
+  }
+
+  /* =====================================================================
+     ULASAN
+     ===================================================================== */
+  async function muatUlasan() {
+    const wadah = document.getElementById('daftarUlasanAdmin');
+    wadah.innerHTML = '<p class="text-slate-400">Memuat…</p>';
+    if (!produkData.length) await muatProduk();
+    const { data, error } = await sb.from('ulasan').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); wadah.innerHTML = '<p class="text-red-500">Gagal memuat ulasan.</p>'; return; }
+    if (!data.length) { wadah.innerHTML = '<p class="text-slate-400">Belum ada ulasan.</p>'; return; }
+    const namaProduk = (id) => (produkData.find((p) => Number(p.id) === Number(id)) || {}).nama || 'Produk #' + id;
+    wadah.innerHTML = data.map((u) => `
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 flex justify-between gap-4">
+        <div class="text-sm">
+          <div><b>${escapeHtml(u.nama)}</b> <span class="text-amber-500">${'★'.repeat(u.rating)}${'☆'.repeat(5 - u.rating)}</span></div>
+          <div class="text-slate-500">${escapeHtml(namaProduk(u.produk_id))} • ${escapeHtml(u.pesanan_resi)} • ${tanggal(u.created_at)}</div>
+          ${u.komentar ? `<p class="mt-1">${escapeHtml(u.komentar)}</p>` : ''}
+        </div>
+        <button onclick="hapusUlasan(${u.id})" class="text-sm text-red-600 hover:underline shrink-0">Hapus</button>
+      </div>`).join('');
+  }
+
+  async function hapusUlasan(id) {
+    if (!confirm('Hapus ulasan ini?')) return;
+    const { error } = await sb.from('ulasan').delete().eq('id', id);
+    if (error) { console.error(error); tampilkanToast('Gagal menghapus.'); return; }
+    tampilkanToast('Ulasan dihapus.');
+    muatUlasan();
+  }
+
+  /* =====================================================================
+     MULAI
+     ===================================================================== */
+  async function init() {
+    document.querySelectorAll('.namaToko').forEach((el) => { el.textContent = CFG.NAMA_TOKO; });
+
+    const keyTerisi = CFG.SUPABASE_ANON_KEY && !CFG.SUPABASE_ANON_KEY.startsWith('TEMPEL');
+    if (!CFG.SUPABASE_URL || !keyTerisi || !window.supabase) {
+      tampilkanLogin('Supabase belum diatur. Isi SUPABASE_URL dan SUPABASE_ANON_KEY di config.js.');
+      return;
+    }
+    sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tombol = document.getElementById('btnLogin');
+      tombol.disabled = true;
+      tombol.textContent = 'Memeriksa…';
+      const { error } = await sb.auth.signInWithPassword({
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value
+      });
+      tombol.disabled = false;
+      tombol.textContent = 'Masuk';
+      if (error) { tampilkanLogin('Email atau password salah.'); return; }
+      masukDashboard();
+    });
+
+    document.getElementById('cariPesanan').addEventListener('input', renderPesanan);
+    document.getElementById('inputFoto').addEventListener('change', (e) => {
+      if (e.target.files.length) uploadFoto(e.target.files);
+      e.target.value = '';
+    });
+
+    // Kalau sebelumnya sudah login, langsung masuk
+    const { data } = await sb.auth.getSession();
+    if (data.session) masukDashboard();
+    else tampilkanLogin();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
