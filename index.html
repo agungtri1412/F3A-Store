@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>F3A Store — Produk Norvine Original, Bisa COD</title>
   <meta name="description" content="Toko produk perawatan rambut & brewok Norvine original. Dikirim dari Surabaya, bisa COD, gratis ongkir untuk pembayaran transfer." />
-  <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="apple-touch-icon" href="favicon.png" />
+  <link rel="icon" href="favicon.png" data-ikon />
+  <link rel="apple-touch-icon" href="favicon.png" data-ikon />
 
   <!-- Font: Oswald (judul) + Inter (teks) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -57,7 +57,7 @@
   <header class="sticky top-0 z-40 bg-bone/95 backdrop-blur border-b border-ink/10">
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
       <a href="#" class="flex items-center gap-2.5 shrink-0">
-        <img src="logo.png" alt="" class="w-10 h-10" />
+        <img src="logo.png" alt="" data-logo class="w-10 h-10" />
         <span class="font-display text-xl font-semibold tracking-wider uppercase whitespace-nowrap" id="namaToko">F3A Store</span>
       </a>
       <nav class="hidden md:flex items-center gap-7 text-sm font-medium">
@@ -95,7 +95,7 @@
           <div class="relative w-56 h-56 sm:w-72 sm:h-72">
             <div class="absolute inset-0 rounded-full border border-brass/40 scale-110"></div>
             <div class="absolute inset-0 rounded-full bg-bone grid place-items-center shadow-2xl">
-              <img src="logo.png" alt="Logo F3A Store" class="w-[86%] h-[86%]" />
+              <img src="logo.png" alt="Logo F3A Store" data-logo class="w-[86%] h-[86%]" />
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@
     <div class="max-w-6xl mx-auto px-4 py-12 grid gap-10 md:grid-cols-4">
       <div class="md:col-span-2">
         <div class="flex items-center gap-3">
-          <span class="w-11 h-11 rounded-full bg-bone grid place-items-center"><img src="logo.png" alt="" class="w-9 h-9" /></span>
+          <span class="w-11 h-11 rounded-full bg-bone grid place-items-center"><img src="logo.png" alt="" data-logo class="w-9 h-9" /></span>
           <span class="font-display text-xl text-bone font-semibold tracking-wider uppercase namaTokoFooter">F3A Store</span>
         </div>
         <p class="mt-4 max-w-sm leading-relaxed">Toko produk perawatan rambut dan brewok Norvine original. Dikirim dari Surabaya ke seluruh Indonesia.</p>
@@ -309,10 +309,18 @@
         <button onclick="tutupPanel('panelLacak')" aria-label="Tutup" class="w-10 h-10 rounded-full hover:bg-sand grid place-items-center text-2xl leading-none">×</button>
       </div>
       <div class="p-5">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <input id="inLacak" type="text" placeholder="Nomor HP atau nomor pesanan (SBY…)" class="flex-1 rounded-xl border border-ink/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brass" />
-          <button onclick="lacakPesanan()" class="bg-ink hover:bg-ink-2 text-bone font-semibold px-6 py-2.5 rounded-full">Lacak</button>
+        <p class="text-sm text-ink/60 mb-4">Nomor pesanan ada di chat WhatsApp saat kamu order (contoh: SBY-7K3QX9).</p>
+        <div class="grid sm:grid-cols-5 gap-3">
+          <div class="sm:col-span-3">
+            <label class="block text-xs font-medium mb-1" for="inLacak">Nomor pesanan</label>
+            <input id="inLacak" type="text" placeholder="SBY-XXXXXX" autocapitalize="characters" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 uppercase font-mono focus:outline-none focus:ring-2 focus:ring-brass" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-medium mb-1" for="inLacakHp">4 angka terakhir no. HP</label>
+            <input id="inLacakHp" type="tel" inputmode="numeric" maxlength="4" placeholder="7890" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-brass" />
+          </div>
         </div>
+        <button onclick="lacakPesanan()" class="mt-3 w-full bg-ink hover:bg-ink-2 text-bone font-semibold px-6 py-3 rounded-full">Lacak</button>
         <div id="hasilLacak" class="mt-5 space-y-4"></div>
       </div>
     </div>
@@ -335,7 +343,7 @@
     { t: 'Bisa bayar di tempat (COD)?', j: 'Bisa. Pilih "COD" saat checkout, lalu bayar ke kurir ketika paket sampai.' },
     { t: 'Kenapa bayar transfer bisa gratis ongkir?', j: 'Pembayaran transfer/QRIS tidak kena biaya layanan COD dari ekspedisi, jadi penghematannya kami kembalikan ke pembeli dalam bentuk potongan ongkir.' },
     { t: 'Berapa lama pengiriman?', j: 'Paket dikirim dari Surabaya. Estimasi tiba muncul di halaman checkout sesuai kota tujuan dan kurir yang dipilih.' },
-    { t: 'Bagaimana cara melacak paket?', j: 'Klik "Lacak Pesanan" di bagian atas halaman, lalu masukkan nomor HP atau nomor pesanan kamu.' },
+    { t: 'Bagaimana cara melacak paket?', j: 'Klik "Lacak Pesanan" di bagian atas halaman, lalu masukkan nomor pesanan (ada di chat WhatsApp saat order) dan 4 angka terakhir nomor HP kamu.' },
     { t: 'Paket rusak atau salah kirim?', j: 'Hubungi kami lewat WhatsApp dengan menyertakan video unboxing. Kami bantu cek dan carikan solusinya.' }
   ];
 
@@ -393,6 +401,9 @@
     return angka;
   }
   const bintang = (n) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
+  /* Foto tanpa background (PNG/WebP) ditampilkan utuh + diberi jarak, latarnya ikut warna tema.
+     Foto biasa (JPG) memenuhi kotak. */
+  const kelasFoto = (url) => /\.(png|webp)(\?|$)/i.test(url || '') ? 'object-contain p-[7%]' : 'object-cover';
   function fotoUtama(p) {
     return (p.foto && p.foto[0]) || `https://placehold.co/600x600/ebe5da/8a6936?text=${encodeURIComponent(p.nama)}`;
   }
@@ -445,7 +456,7 @@
     }
     const [hProduk, hUlasan, hPengaturan] = await Promise.all([
       sb.from('produk').select('*').eq('aktif', true).order('urutan').order('id'),
-      sb.from('ulasan').select('produk_id, pesanan_resi, nama, rating, komentar, created_at').order('created_at', { ascending: false }),
+      sb.from('ulasan').select('produk_id, nama, rating, komentar, created_at').order('created_at', { ascending: false }),
       sb.from('pengaturan').select('data').eq('id', 1).maybeSingle()
     ]);
     if (hPengaturan.data && hPengaturan.data.data) pengaturan = hPengaturan.data.data;
@@ -462,7 +473,15 @@
     renderSemua();
   }
 
+  // Ganti logo & ikon tab kalau admin sudah upload logo sendiri (Pengaturan → Logo Toko)
+  function renderLogo() {
+    if (!pengaturan.logo) return;
+    document.querySelectorAll('[data-logo]').forEach((img) => { img.src = pengaturan.logo; });
+    document.querySelectorAll('[data-ikon]').forEach((link) => { link.href = pengaturan.logo; });
+  }
+
   function renderSemua() {
+    renderLogo();
     if (daftarProduk.length || !sb) renderKatalog();
     renderPromo();
     renderKepercayaan();
@@ -511,7 +530,7 @@
       return `
         <button type="button" onclick="bukaDetail(${p.id})" class="group text-left bg-white rounded-2xl overflow-hidden border border-ink/5 hover:shadow-xl hover:-translate-y-1 transition duration-300 flex flex-col">
           <div class="relative overflow-hidden bg-sand">
-            <img src="${escapeHtml(fotoUtama(p))}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square object-cover group-hover:scale-105 transition duration-500" loading="lazy" />
+            <img src="${escapeHtml(fotoUtama(p))}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square ${kelasFoto(fotoUtama(p))} group-hover:scale-105 transition duration-500" loading="lazy" />
             ${gratisOngkirAktif() ? '<span class="absolute top-2 left-2 bg-ink text-bone text-[10px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full">Gratis ongkir*</span>' : ''}
           </div>
           <div class="p-3 sm:p-4 flex flex-col flex-1">
@@ -593,7 +612,7 @@
       <div class="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
         ${foto.map((f, i) => `
           <button type="button" onclick="renderDetail(${i})" class="shrink-0 rounded-xl overflow-hidden border-2 ${i === idxFoto ? 'border-ink' : 'border-transparent opacity-70'}">
-            <img src="${escapeHtml(f)}" alt="" class="w-16 h-16 object-cover" />
+            <img src="${escapeHtml(f)}" alt="" class="w-16 h-16 bg-sand ${kelasFoto(f)}" />
           </button>`).join('')}
       </div>` : '';
     const daftarUlasan = list.length
@@ -611,7 +630,7 @@
     document.getElementById('isiDetail').innerHTML = `
       <div class="grid md:grid-cols-2 gap-6 p-5 sm:p-7">
         <div>
-          <img src="${escapeHtml(foto[idxFoto] || foto[0])}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square object-cover rounded-2xl bg-sand" />
+          <img src="${escapeHtml(foto[idxFoto] || foto[0])}" alt="${escapeHtml(p.nama)}" class="w-full aspect-square ${kelasFoto(foto[idxFoto] || foto[0])} rounded-2xl bg-sand" />
           ${thumbnail}
         </div>
         <div class="flex flex-col">
@@ -757,7 +776,7 @@
     if (!p) return;
     const t = hitungTotal();
     document.getElementById('ringkasanProduk').innerHTML = `
-      <img src="${escapeHtml(fotoUtama(p))}" class="w-16 h-16 rounded-xl object-cover bg-sand" alt="" />
+      <img src="${escapeHtml(fotoUtama(p))}" class="w-16 h-16 rounded-xl ${kelasFoto(fotoUtama(p))} bg-sand" alt="" />
       <div class="flex-1 min-w-0">
         <div class="font-semibold leading-tight">${escapeHtml(p.nama)}</div>
         <div class="text-sm text-ink/50">${rupiah(p.harga)}</div>
@@ -867,7 +886,7 @@
     if (!hasil) {
       const t = hitungTotal();
       hasil = {
-        resi: 'SBY' + Date.now().toString().slice(-8), no_hp: form.no_hp, produk_nama: keranjang.produk.nama,
+        resi: 'SBY-' + Math.random().toString(36).slice(2, 8).toUpperCase(), no_hp: form.no_hp, produk_nama: keranjang.produk.nama,
         harga: keranjang.produk.harga, jumlah: keranjang.jumlah, subtotal: t.subtotal, diskon: t.diskon,
         kode_voucher: kiriman.kode_voucher, ongkir: t.ongkir, potongan_ongkir: t.potOngkir, total: t.total, metode_bayar: keranjang.metode
       };
@@ -928,7 +947,7 @@
         ${h.metode_bayar === 'COD' ? 'Buka WhatsApp lagi' : 'Kirim bukti bayar via WhatsApp'}
       </a>
       ${tersimpan
-        ? `<button onclick="isiLacak('${h.resi}')" class="mt-2 underline">Lacak pesanan ini →</button>`
+        ? `<button onclick="isiLacak('${h.resi}', '${h.no_hp}')" class="mt-2 underline">Lacak pesanan ini →</button>`
         : '<div class="mt-2 text-xs text-amber-700">Catatan: pesanan belum tercatat di sistem lacak.</div>'}`;
     kotak.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -936,30 +955,29 @@
   /* =====================================================================
      LACAK PESANAN + ULASAN
      ===================================================================== */
-  function isiLacak(resi) {
+  function isiLacak(resi, noHp) {
     tutupPanel('panelCheckout');
     document.getElementById('inLacak').value = resi;
+    if (noHp) document.getElementById('inLacakHp').value = String(noHp).slice(-4);
     bukaPanel('panelLacak');
     lacakPesanan();
   }
 
   async function lacakPesanan() {
-    const kataKunci = document.getElementById('inLacak').value.trim();
+    // Wajib 2 data: nomor pesanan + 4 angka terakhir HP (supaya orang lain tidak bisa mengintip)
+    const resi = document.getElementById('inLacak').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const hp4 = document.getElementById('inLacakHp').value.replace(/\D/g, '');
     const wadah = document.getElementById('hasilLacak');
-    if (!kataKunci) { tampilkanToast('Masukkan nomor HP atau nomor pesanan.'); return; }
+    if (resi.length < 8) { tampilkanToast('Masukkan nomor pesanan (contoh: SBY-7K3QX9).'); return; }
+    if (hp4.length !== 4) { tampilkanToast('Masukkan 4 angka terakhir nomor HP.'); return; }
     if (!sb) { wadah.innerHTML = '<p class="text-ink/50 text-sm">Fitur lacak belum aktif.</p>'; return; }
     wadah.innerHTML = '<p class="text-ink/40 text-sm">Mencari…</p>';
-    const adaHuruf = /[a-z]/i.test(kataKunci);
-    const { data, error } = await sb.rpc('lacak_pesanan', {
-      p_hp: adaHuruf ? null : normalisasiHp(kataKunci),
-      p_resi: adaHuruf ? kataKunci.toUpperCase().replace(/[^A-Z0-9]/g, '') : null
-    });
+    const { data, error } = await sb.rpc('lacak_pesanan', { p_resi: resi, p_hp4: hp4 });
     if (error) { console.error(error); wadah.innerHTML = '<p class="text-red-600 text-sm">Terjadi kesalahan. Coba lagi sebentar.</p>'; return; }
-    if (!data || !data.length) { wadah.innerHTML = '<p class="text-ink/50 text-sm">Pesanan tidak ditemukan. Periksa kembali nomor HP / nomor pesanan.</p>'; return; }
+    if (!data || !data.length) { wadah.innerHTML = '<p class="text-ink/50 text-sm">Pesanan tidak ditemukan. Periksa kembali nomor pesanan dan 4 angka terakhir nomor HP.</p>'; return; }
     hasilLacak = {};
     data.forEach((p) => { hasilLacak[p.resi] = p; });
-    const sudahDiulas = new Set(semuaUlasan.map((u) => u.pesanan_resi));
-    wadah.innerHTML = data.map((p) => kartuPesanan(p, sudahDiulas.has(p.resi))).join('');
+    wadah.innerHTML = data.map((p) => kartuPesanan(p, p.sudah_diulas)).join('');
   }
 
   function kartuPesanan(p, sudahDiulas) {
@@ -1057,7 +1075,7 @@
       KOTA_TUJUAN.map((k) => `<option value="${k.nama}">${k.nama} (${k.wilayah})</option>`).join('');
     select.addEventListener('change', hitungOngkir);
     document.getElementById('inVoucher').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); pakaiVoucher(); } });
-    document.getElementById('inLacak').addEventListener('keydown', (e) => { if (e.key === 'Enter') lacakPesanan(); });
+    ['inLacak', 'inLacakHp'].forEach((id) => document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') lacakPesanan(); }));
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const terbuka = [...document.querySelectorAll('.panel:not(.hidden)')].pop();

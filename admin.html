@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
   <title>Admin — F3A Store</title>
-  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="icon" href="favicon.png" data-ikon />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
   <script src="config.js"></script>
@@ -17,7 +17,7 @@
   <div id="layarLogin" class="hidden min-h-screen grid place-items-center p-4">
     <form id="formLogin" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 w-full max-w-sm space-y-4">
       <div>
-        <img src="logo.png" alt="" class="w-16 h-16 mb-2" />
+        <img src="logo.png" alt="" data-logo class="w-16 h-16 mb-2" />
         <h1 class="text-xl font-bold">Admin <span class="namaToko">F3A Store</span></h1>
         <p class="text-sm text-slate-500">Masuk untuk mengelola pesanan dan produk.</p>
       </div>
@@ -38,7 +38,7 @@
   <div id="layarAdmin" class="hidden">
     <header class="sticky top-0 z-30 bg-white border-b border-slate-200">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2 font-extrabold"><img src="logo.png" alt="" class="w-8 h-8" /> Admin <span class="namaToko">F3A Store</span></div>
+        <div class="flex items-center gap-2 font-extrabold"><img src="logo.png" alt="" data-logo class="w-8 h-8" /> Admin <span class="namaToko">F3A Store</span></div>
         <div class="flex items-center gap-2 text-sm">
           <a href="index.html" target="_blank" class="px-3 py-2 rounded-lg hover:bg-slate-100">Lihat Toko ↗</a>
           <button onclick="keluar()" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200">Keluar</button>
@@ -327,6 +327,7 @@
     document.getElementById('layarLogin').classList.add('hidden');
     document.getElementById('layarAdmin').classList.remove('hidden');
     await muatPengaturan();   // dipakai juga untuk info rekening di pesan WA
+    terapkanLogo();
     gantiTab('pesanan');
   }
 
@@ -482,7 +483,7 @@
         `Kurir       : ${p.kurir}`,
         p.resi_kurir ? `No. Resi    : ${p.resi_kurir}` : null,
         cod ? `Total COD   : ${rupiah(p.total)}` : null, '',
-        `Cek status paket di ${linkToko()} (menu Lacak, masukkan no. pesanan).`,
+        `Cek status paket di ${linkToko()} → Lacak Pesanan → masukkan no. pesanan & 4 angka terakhir no. HP kakak.`,
         cod ? 'Mohon siapkan uang pas saat kurir datang ya kak 🙏' : 'Ditunggu paketnya ya kak 🙏'
       ];
     } else if (p.status === 'Dibatalkan') {
@@ -496,7 +497,7 @@
         sapaan, '',
         `Paket kakak sudah sampai. Terima kasih sudah belanja di ${CFG.NAMA_TOKO} 🙏`, '',
         `Kalau berkenan, bantu kami dengan memberi ulasan di ${linkToko()}`,
-        `→ menu Lacak → masukkan no. pesanan ${p.resi}`
+        `→ Lacak Pesanan → masukkan no. pesanan ${p.resi} & 4 angka terakhir no. HP kakak`
       ];
     }
     const teks = isi.filter((baris) => baris !== null).join('\n');
@@ -518,7 +519,7 @@
     if (!produkData.length) { wadah.innerHTML = '<p class="col-span-full text-slate-400">Belum ada produk.</p>'; return; }
     wadah.innerHTML = produkData.map((p) => `
       <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col ${p.aktif ? '' : 'opacity-60'}">
-        <img src="${escapeHtml(p.foto[0] || 'https://placehold.co/400x400/f1f5f9/94a3b8?text=Belum+ada+foto')}" alt="" class="w-full aspect-square object-cover bg-slate-100" />
+        <img src="${escapeHtml(p.foto[0] || 'https://placehold.co/400x400/f1f5f9/94a3b8?text=Belum+ada+foto')}" alt="" class="w-full aspect-square bg-slate-100 ${/\.(png|webp)(\?|$)/i.test(p.foto[0] || '') ? 'object-contain p-3' : 'object-cover'}" />
         <div class="p-3 flex flex-col flex-1">
           <div class="font-semibold leading-snug">${escapeHtml(p.nama)}</div>
           <div class="text-emerald-700 font-bold">${rupiah(p.harga)}</div>
@@ -558,7 +559,7 @@
     }
     wadah.innerHTML = fotoForm.map((url, i) => `
       <div class="relative rounded-xl overflow-hidden border-2 ${i === 0 ? 'border-emerald-500' : 'border-slate-200'}">
-        <img src="${escapeHtml(url)}" alt="" class="w-full aspect-square object-cover" />
+        <img src="${escapeHtml(url)}" alt="" class="w-full aspect-square bg-slate-100 ${/\.(png|webp)(\?|$)/i.test(url) ? 'object-contain p-2' : 'object-cover'}" />
         ${i === 0 ? '<span class="absolute top-1 left-1 text-[10px] font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded">UTAMA</span>' : ''}
         <div class="absolute bottom-0 inset-x-0 flex justify-between bg-black/50 text-white text-sm">
           <button type="button" onclick="geserFoto(${i}, -1)" class="px-2 py-1 ${i === 0 ? 'invisible' : ''}" title="Geser ke kiri">◀</button>
@@ -581,7 +582,11 @@
     renderFotoForm();
   }
 
-  // Perkecil foto (maks 1200 px, JPEG) supaya hemat kuota & cepat dibuka di HP
+  /* Perkecil foto (maks 1200 px) supaya hemat kuota & cepat dibuka di HP.
+     - Foto biasa → JPEG (paling kecil)
+     - Foto TANPA BACKGROUND (ada bagian transparan) → WebP/PNG, transparannya tetap terjaga,
+       sehingga di toko latarnya otomatis mengikuti warna tema.
+     Hasil: { blob, ext, tipe } */
   async function kecilkanFoto(file, maks = 1200) {
     try {
       const img = await createImageBitmap(file);
@@ -589,11 +594,26 @@
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(img.width * skala);
       canvas.height = Math.round(img.height * skala);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
-      return blob || file;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Cek apakah ada piksel transparan
+      const piksel = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let transparan = false;
+      for (let i = 3; i < piksel.length; i += 16) { if (piksel[i] < 250) { transparan = true; break; } }
+
+      if (transparan) {
+        const webp = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.9));
+        if (webp && webp.type === 'image/webp') return { blob: webp, ext: 'webp', tipe: 'image/webp' };
+        const png = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+        return { blob: png, ext: 'png', tipe: 'image/png' };
+      }
+      const jpg = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+      return { blob: jpg, ext: 'jpg', tipe: 'image/jpeg' };
     } catch (e) {
-      return file;   // kalau gagal diperkecil, upload file aslinya
+      // Kalau gagal diperkecil, upload file aslinya
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      return { blob: file, ext, tipe: file.type || 'image/jpeg' };
     }
   }
 
@@ -602,9 +622,9 @@
     const daftar = Array.from(files);
     for (let i = 0; i < daftar.length; i++) {
       status.textContent = `Mengunggah ${i + 1}/${daftar.length}…`;
-      const blob = await kecilkanFoto(daftar[i]);
-      const jalur = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-      const { error } = await sb.storage.from(BUCKET_FOTO).upload(jalur, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+      const foto = await kecilkanFoto(daftar[i]);
+      const jalur = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${foto.ext}`;
+      const { error } = await sb.storage.from(BUCKET_FOTO).upload(jalur, foto.blob, { contentType: foto.tipe, cacheControl: '31536000' });
       if (error) {
         console.error(error);
         status.textContent = '';
@@ -864,6 +884,20 @@
       </div>`).join('');
 
     document.getElementById('formPengaturan').innerHTML =
+      kotak('🖼️ Logo Toko', `
+        <div class="flex flex-wrap items-center gap-5">
+          <div class="w-28 h-28 rounded-full bg-[#f5f2ec] border grid place-items-center overflow-hidden">
+            <img src="${escapeHtml(s.logo || 'logo.png')}" alt="Logo" class="w-[88%] h-[88%] object-contain" />
+          </div>
+          <div class="space-y-2">
+            <label class="inline-block cursor-pointer bg-slate-100 hover:bg-slate-200 text-sm font-medium px-4 py-2 rounded-xl">
+              📷 Upload logo baru
+              <input type="file" accept="image/*" class="hidden" onchange="uploadLogo(this.files[0])" />
+            </label>
+            ${s.logo ? '<button type="button" onclick="resetLogo()" class="block text-sm text-red-600 hover:underline">Kembalikan ke logo bawaan</button>' : ''}
+            <p class="text-xs text-slate-400 max-w-xs">Paling bagus PNG tanpa background, bentuk persegi. Dipakai di header, footer, dan ikon tab browser.</p>
+          </div>
+        </div>`) +
       kotak('💳 Cara Pembayaran', `
         <div class="space-y-5">
           <div>${centang('pCod', b.cod.aktif, 'COD (bayar di tempat)')}</div>
@@ -937,13 +971,41 @@
     if (!file) return;
     bacaFormPengaturan();
     tampilkanToast('Mengunggah QRIS…');
-    const blob = await kecilkanFoto(file, 1000);
-    const jalur = `qris/${Date.now()}.jpg`;
-    const { error } = await sb.storage.from(BUCKET_FOTO).upload(jalur, blob, { contentType: 'image/jpeg' });
+    const foto = await kecilkanFoto(file, 1000);
+    const jalur = `qris/${Date.now()}.${foto.ext}`;
+    const { error } = await sb.storage.from(BUCKET_FOTO).upload(jalur, foto.blob, { contentType: foto.tipe });
     if (error) { console.error(error); tampilkanToast('Gagal upload: ' + error.message); return; }
     pengaturanData.pembayaran.qris.gambar = sb.storage.from(BUCKET_FOTO).getPublicUrl(jalur).data.publicUrl;
     renderPengaturan();
     tampilkanToast('QRIS terunggah. Jangan lupa klik Simpan Pengaturan.');
+  }
+
+  // Upload logo toko (transparan tetap terjaga), lalu tampilkan pratinjau
+  async function uploadLogo(file) {
+    if (!file) return;
+    bacaFormPengaturan();
+    tampilkanToast('Mengunggah logo…');
+    const foto = await kecilkanFoto(file, 512);
+    const jalur = `logo/${Date.now()}.${foto.ext}`;
+    const { error } = await sb.storage.from(BUCKET_FOTO).upload(jalur, foto.blob, { contentType: foto.tipe, cacheControl: '31536000' });
+    if (error) { console.error(error); tampilkanToast('Gagal upload: ' + error.message); return; }
+    pengaturanData.logo = sb.storage.from(BUCKET_FOTO).getPublicUrl(jalur).data.publicUrl;
+    renderPengaturan();
+    tampilkanToast('Logo terunggah. Klik Simpan Pengaturan supaya tampil di toko.');
+  }
+
+  function resetLogo() {
+    bacaFormPengaturan();
+    delete pengaturanData.logo;
+    renderPengaturan();
+    tampilkanToast('Klik Simpan Pengaturan untuk kembali ke logo bawaan.');
+  }
+
+  // Pakai logo dari pengaturan di halaman admin juga
+  function terapkanLogo() {
+    const url = (pengaturanData && pengaturanData.logo) || 'logo.png';
+    document.querySelectorAll('[data-logo]').forEach((img) => { img.src = url; });
+    document.querySelectorAll('[data-ikon]').forEach((link) => { link.href = pengaturanData && pengaturanData.logo ? url : 'favicon.png'; });
   }
 
   async function simpanPengaturan() {
@@ -968,6 +1030,7 @@
     tombol.textContent = 'Simpan Pengaturan';
     if (error) { console.error(error); tampilkanToast('Gagal menyimpan pengaturan.'); return; }
     renderPengaturan();
+    terapkanLogo();
     tampilkanToast('Pengaturan tersimpan. Langsung berlaku di toko.');
   }
 
