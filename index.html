@@ -9,7 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase (database) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
-  <!-- Pengaturan toko: nomor WA, Supabase, dll. → edit di file config.js -->
+  <!-- Pengaturan toko: nomor WA, Supabase → edit di file config.js -->
   <script src="config.js"></script>
 
   <style>
@@ -33,7 +33,6 @@
         <a href="#lacak" class="px-3 py-2 rounded-lg hover:bg-slate-100">Lacak</a>
       </nav>
     </div>
-    <!-- Hanya muncul kalau database belum tersambung -->
     <div id="bannerMode" class="hidden text-xs text-center py-1 bg-amber-50 text-amber-700"></div>
   </header>
 
@@ -43,13 +42,14 @@
     <section class="py-10 md:py-14 text-center">
       <span class="inline-block text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">📦 Dikirim dari Surabaya • Bisa COD</span>
       <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight">Produk Norvine original,<br class="hidden md:block" /> bayar di tempat.</h1>
-      <p class="mt-3 text-slate-500 max-w-xl mx-auto">Pilih produk, isi alamat, ongkir langsung terhitung. Pesanan dikonfirmasi lewat WhatsApp, bayar ke kurir saat paket sampai.</p>
+      <p class="mt-3 text-slate-500 max-w-xl mx-auto">Pilih produk, isi alamat, ongkir langsung terhitung. Bayar ke kurir saat paket sampai, atau transfer dan dapatkan gratis ongkir.</p>
+      <!-- Promo gratis ongkir (diisi otomatis dari pengaturan) -->
+      <div id="bannerPromo" class="hidden mt-5 inline-block bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium px-4 py-2 rounded-xl"></div>
     </section>
 
     <!-- ===================== 1. KATALOG ===================== -->
     <section id="katalog" class="scroll-mt-28 pb-12">
       <h2 class="text-2xl font-bold mb-5">Katalog Produk</h2>
-      <!-- Diisi otomatis oleh renderKatalog() -->
       <div id="daftarProduk" class="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <p class="col-span-full text-slate-400">Memuat produk…</p>
       </div>
@@ -64,55 +64,65 @@
       </div>
 
       <div id="checkoutForm" class="hidden grid gap-6 lg:grid-cols-5">
-        <form class="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4" onsubmit="return false;">
-          <h3 class="font-semibold text-lg">Data Pengiriman</h3>
-          <div>
-            <label class="block text-sm font-medium mb-1" for="inNama">Nama Lengkap</label>
-            <input id="inNama" type="text" placeholder="Contoh: Budi Santoso" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1" for="inHp">Nomor WhatsApp</label>
-            <input id="inHp" type="tel" inputmode="numeric" placeholder="Contoh: 081234567890" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1" for="inAlamat">Alamat Lengkap</label>
-            <textarea id="inAlamat" rows="2" placeholder="Jalan, nomor rumah, RT/RW, kecamatan" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1" for="inKota">Kota Tujuan</label>
-            <select id="inKota" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"></select>
-          </div>
-          <div>
-            <span class="block text-sm font-medium mb-2">Pilih Kurir (COD)</span>
-            <div class="grid grid-cols-2 gap-3">
-              <label class="cursor-pointer">
-                <input type="radio" name="kurir" value="J&T" class="peer sr-only" checked />
-                <div class="rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
-                  <div class="font-semibold">J&amp;T Express</div>
-                  <div class="text-xs text-slate-500">Mendukung COD</div>
-                </div>
-              </label>
-              <label class="cursor-pointer">
-                <input type="radio" name="kurir" value="Ninja Xpress" class="peer sr-only" />
-                <div class="rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
-                  <div class="font-semibold">Ninja Xpress</div>
-                  <div class="text-xs text-slate-500">Mendukung COD</div>
-                </div>
-              </label>
+        <form class="lg:col-span-3 space-y-6" onsubmit="return false;">
+
+          <!-- Data pengiriman -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+            <h3 class="font-semibold text-lg">1. Data Pengiriman</h3>
+            <div>
+              <label class="block text-sm font-medium mb-1" for="inNama">Nama Lengkap</label>
+              <input id="inNama" type="text" placeholder="Contoh: Budi Santoso" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
+            <div>
+              <label class="block text-sm font-medium mb-1" for="inHp">Nomor WhatsApp</label>
+              <input id="inHp" type="tel" inputmode="numeric" placeholder="Contoh: 081234567890" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1" for="inAlamat">Alamat Lengkap</label>
+              <textarea id="inAlamat" rows="2" placeholder="Jalan, nomor rumah, RT/RW, kecamatan" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1" for="inKota">Kota Tujuan</label>
+              <select id="inKota" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"></select>
+            </div>
+          </div>
+
+          <!-- Cara bayar -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <h3 class="font-semibold text-lg mb-3">2. Cara Pembayaran</h3>
+            <div id="pilihanBayar" class="grid sm:grid-cols-3 gap-3"></div>
+          </div>
+
+          <!-- Kurir -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <h3 class="font-semibold text-lg mb-3">3. Pilih Kurir</h3>
+            <div id="pilihanKurir" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
           </div>
         </form>
 
+        <!-- Ringkasan -->
         <aside class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 h-fit lg:sticky lg:top-28">
-          <h3 class="font-semibold text-lg mb-3">Ringkasan Tagihan COD</h3>
+          <h3 class="font-semibold text-lg mb-3">Ringkasan Pesanan</h3>
           <div id="ringkasanProduk" class="flex gap-3 items-center pb-4 border-b border-slate-100"></div>
+
+          <!-- Voucher -->
+          <div class="py-4 border-b border-slate-100">
+            <div class="flex gap-2">
+              <input id="inVoucher" type="text" placeholder="Kode voucher" class="flex-1 min-w-0 rounded-xl border border-slate-300 px-3 py-2 uppercase text-sm" />
+              <button type="button" id="btnVoucher" onclick="pakaiVoucher()" class="px-4 rounded-xl bg-slate-900 text-white text-sm font-semibold">Pakai</button>
+            </div>
+            <p id="pesanVoucher" class="text-xs mt-1"></p>
+          </div>
+
           <dl class="py-4 space-y-2 text-sm">
-            <div class="flex justify-between"><dt class="text-slate-500">Harga produk</dt><dd id="rHarga">-</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">Subtotal <span id="rJumlah"></span></dt><dd id="rSubtotal">-</dd></div>
+            <div id="barisDiskon" class="hidden flex justify-between text-emerald-700"><dt>Diskon voucher</dt><dd id="rDiskon">-</dd></div>
             <div class="flex justify-between"><dt class="text-slate-500">Ongkir <span id="rKurirInfo"></span></dt><dd id="rOngkir">-</dd></div>
+            <div id="barisPotOngkir" class="hidden flex justify-between text-emerald-700"><dt>Gratis ongkir</dt><dd id="rPotOngkir">-</dd></div>
             <div class="flex justify-between text-xs text-slate-400"><dt>Estimasi tiba</dt><dd id="rEstimasi">-</dd></div>
           </dl>
           <div class="flex justify-between items-center border-t border-slate-100 pt-4">
-            <span class="font-semibold">Total bayar ke kurir</span>
+            <span id="labelTotal" class="font-semibold">Total</span>
             <span id="rTotal" class="text-xl font-extrabold text-emerald-600">-</span>
           </div>
           <button id="btnPesan" onclick="buatPesanan()" class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition">
@@ -129,7 +139,7 @@
       <h2 class="text-2xl font-bold mb-5">Lacak Pesanan Saya</h2>
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
         <div class="flex flex-col sm:flex-row gap-3">
-          <input id="inLacak" type="text" placeholder="Masukkan nomor HP atau nomor pesanan (mis. SBY12345678)" class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <input id="inLacak" type="text" placeholder="Masukkan nomor HP atau nomor pesanan (mis. SBY2610211234)" class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           <button onclick="lacakPesanan()" class="bg-slate-900 hover:bg-slate-700 text-white font-semibold px-6 py-2.5 rounded-xl">Lacak</button>
         </div>
         <div id="hasilLacak" class="mt-5 space-y-4"></div>
@@ -150,24 +160,27 @@
     </div>
   </div>
 
-  <!-- Notifikasi kecil -->
   <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg opacity-0 pointer-events-none transition-opacity z-[60]"></div>
 
 
   <script>
   /* =====================================================================
-     PENGATURAN (diambil dari config.js; nilai di bawah hanya cadangan)
+     PENGATURAN DASAR (dari config.js)
      ===================================================================== */
   const CFG = Object.assign({
-    NAMA_TOKO: 'F3A Store',
-    NOMOR_WA_PENJUAL: '',
-    SUPABASE_URL: '',
-    SUPABASE_ANON_KEY: '',
-    KOTA_ASAL: 'Surabaya'
+    NAMA_TOKO: 'F3A Store', NOMOR_WA_PENJUAL: '', SUPABASE_URL: '', SUPABASE_ANON_KEY: '', KOTA_ASAL: 'Surabaya'
   }, window.KONFIG || {});
 
-  /* Produk cadangan: HANYA dipakai kalau database belum tersambung.
-     Kalau sudah tersambung, produk diambil dari tabel "produk" (diedit di admin.html). */
+  /* Pengaturan cadangan — dipakai HANYA kalau database belum tersambung.
+     Pengaturan asli (cara bayar, kurir, gratis ongkir) diedit di admin.html → Pengaturan. */
+  const PENGATURAN_CADANGAN = {
+    pembayaran: { cod: { aktif: true }, transfer: { aktif: false, rekening: [] }, qris: { aktif: false, gambar: '' } },
+    free_ongkir_non_cod: { aktif: false, maks: 0, min_belanja: 0 },
+    kurir: [
+      { nama: 'J&T', aktif: true, cod: true, selisih: 0 },
+      { nama: 'Ninja Xpress', aktif: true, cod: true, selisih: -1000 }
+    ]
+  };
   const PRODUK_CADANGAN = [
     { id: 1, nama: 'Norvine Minoxidil',    harga: 85000, berat_gram: 200, foto: [], deskripsi: 'Minoxidil Norvine original.' },
     { id: 2, nama: 'Norvine Saw Palmetto', harga: 95000, berat_gram: 200, foto: [], deskripsi: 'Suplemen Saw Palmetto Norvine original.' },
@@ -177,121 +190,119 @@
 
   /* Kota tujuan & tarif simulasi ongkir (nanti diganti API KiriminAja) */
   const KOTA_TUJUAN = [
-    { nama: 'Surabaya',   wilayah: 'Jawa Timur' },
-    { nama: 'Sidoarjo',   wilayah: 'Jawa Timur' },
-    { nama: 'Gresik',     wilayah: 'Jawa Timur' },
-    { nama: 'Malang',     wilayah: 'Jawa Timur' },
-    { nama: 'Jember',     wilayah: 'Jawa Timur' },
-    { nama: 'Semarang',   wilayah: 'Jawa Tengah & DIY' },
-    { nama: 'Yogyakarta', wilayah: 'Jawa Tengah & DIY' },
-    { nama: 'Bandung',    wilayah: 'Jawa Barat' },
-    { nama: 'Jakarta',    wilayah: 'Jabodetabek' },
-    { nama: 'Denpasar',   wilayah: 'Bali & Nusa Tenggara' },
-    { nama: 'Medan',      wilayah: 'Sumatra' },
-    { nama: 'Makassar',   wilayah: 'Sulawesi' }
+    { nama: 'Surabaya', wilayah: 'Jawa Timur' }, { nama: 'Sidoarjo', wilayah: 'Jawa Timur' },
+    { nama: 'Gresik', wilayah: 'Jawa Timur' }, { nama: 'Malang', wilayah: 'Jawa Timur' },
+    { nama: 'Jember', wilayah: 'Jawa Timur' }, { nama: 'Semarang', wilayah: 'Jawa Tengah & DIY' },
+    { nama: 'Yogyakarta', wilayah: 'Jawa Tengah & DIY' }, { nama: 'Bandung', wilayah: 'Jawa Barat' },
+    { nama: 'Jakarta', wilayah: 'Jabodetabek' }, { nama: 'Denpasar', wilayah: 'Bali & Nusa Tenggara' },
+    { nama: 'Medan', wilayah: 'Sumatra' }, { nama: 'Makassar', wilayah: 'Sulawesi' }
   ];
   const TARIF_WILAYAH = {
-    'Jawa Timur':           { tarif: 8000,  hari: '1-2' },
-    'Jawa Tengah & DIY':    { tarif: 15000, hari: '2-3' },
-    'Jawa Barat':           { tarif: 20000, hari: '2-4' },
-    'Jabodetabek':          { tarif: 22000, hari: '2-3' },
-    'Bali & Nusa Tenggara': { tarif: 20000, hari: '3-4' },
-    'Sumatra':              { tarif: 35000, hari: '4-6' },
-    'Sulawesi':             { tarif: 38000, hari: '4-7' }
+    'Jawa Timur': { tarif: 8000, hari: '1-2' }, 'Jawa Tengah & DIY': { tarif: 15000, hari: '2-3' },
+    'Jawa Barat': { tarif: 20000, hari: '2-4' }, 'Jabodetabek': { tarif: 22000, hari: '2-3' },
+    'Bali & Nusa Tenggara': { tarif: 20000, hari: '3-4' }, 'Sumatra': { tarif: 35000, hari: '4-6' },
+    'Sulawesi': { tarif: 38000, hari: '4-7' }
   };
+  const NAMA_METODE = { COD: 'COD (Bayar di Tempat)', Transfer: 'Transfer Bank', QRIS: 'QRIS' };
 
   /* =====================================================================
      DATA YANG SEDANG AKTIF
      ===================================================================== */
-  let sb = null;               // koneksi Supabase (null = belum tersambung)
-  let daftarProduk = [];       // produk yang tampil di katalog
-  let semuaUlasan = [];        // semua ulasan (untuk rating & daftar ulasan)
-  let produkTerpilih = null;   // produk yang sedang di-checkout
-  let ongkirSaatIni = null;    // hasil hitung ongkir terakhir
-  let detailAktif = null;      // produk yang sedang dibuka di pop-up
-  let hasilLacak = {};         // pesanan hasil lacak terakhir, dikelompokkan per nomor pesanan
+  let sb = null;
+  let pengaturan = PENGATURAN_CADANGAN;
+  let daftarProduk = [];
+  let semuaUlasan = [];
+  let detailAktif = null;
+  let hasilLacak = {};
+
+  // Isi keranjang checkout (1 jenis produk per pesanan)
+  const keranjang = {
+    produk: null,
+    jumlah: 1,
+    metode: 'COD',
+    kurir: null,
+    ongkir: null,      // hasil hitung ongkir {ongkir, estimasi}
+    voucher: null      // info voucher yang valid (dari cek_voucher)
+  };
 
   /* =====================================================================
      ALAT BANTU KECIL
      ===================================================================== */
   const rupiah = (n) => 'Rp' + Number(n || 0).toLocaleString('id-ID');
-
-  // Amankan teks sebelum ditampilkan sebagai HTML (mencegah kode jahat)
   function escapeHtml(teks) {
-    return String(teks ?? '').replace(/[&<>"']/g, (c) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
+    return String(teks ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
-
-  // "0812-3456 7890" / "+62812..." → "62812..."
   function normalisasiHp(hp) {
     let angka = String(hp || '').replace(/\D/g, '');
     if (angka.startsWith('0')) angka = '62' + angka.slice(1);
     if (angka.startsWith('8')) angka = '62' + angka;
     return angka;
   }
-
-  // Nomor pesanan toko, contoh: SBY48210937
-  const buatNoPesanan = () => 'SBY' + Date.now().toString().slice(-6) + Math.floor(10 + Math.random() * 90);
-
-  // 4 → ★★★★☆
   const bintang = (n) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
-
-  // Foto utama produk (foto pertama), atau gambar polos kalau belum ada foto
   function fotoUtama(p) {
     return (p.foto && p.foto[0]) || `https://placehold.co/600x600/ecfdf5/047857?text=${encodeURIComponent(p.nama)}`;
   }
-
-  // Ringkasan ulasan satu produk: daftar ulasan + rata-rata bintang
   function statUlasan(produkId) {
     const list = semuaUlasan.filter((u) => Number(u.produk_id) === Number(produkId));
     const rata = list.length ? list.reduce((s, u) => s + Number(u.rating), 0) / list.length : 0;
     return { list, rata };
   }
-
   function tampilkanToast(pesan) {
     const t = document.getElementById('toast');
     t.textContent = pesan;
     t.classList.remove('opacity-0');
     clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.classList.add('opacity-0'), 3000);
+    t._timer = setTimeout(() => t.classList.add('opacity-0'), 3500);
   }
+  const kurirAktif = () => (pengaturan.kurir || []).filter((k) => k.aktif);
+  const metodeAktif = () => ['COD', 'Transfer', 'QRIS'].filter((m) => pengaturan.pembayaran?.[m.toLowerCase()]?.aktif);
 
   /* =====================================================================
      AMBIL DATA DARI DATABASE
      ===================================================================== */
-  async function muatProdukDanUlasan() {
+  async function muatSemua() {
     if (!sb) {
       daftarProduk = PRODUK_CADANGAN;
-      semuaUlasan = [];
       renderKatalog();
       return;
     }
-    const [hasilProduk, hasilUlasan] = await Promise.all([
+    const [hProduk, hUlasan, hPengaturan] = await Promise.all([
       sb.from('produk').select('*').eq('aktif', true).order('urutan').order('id'),
-      sb.from('ulasan').select('produk_id, pesanan_resi, nama, rating, komentar, created_at').order('created_at', { ascending: false })
+      sb.from('ulasan').select('produk_id, pesanan_resi, nama, rating, komentar, created_at').order('created_at', { ascending: false }),
+      sb.from('pengaturan').select('data').eq('id', 1).maybeSingle()
     ]);
-    if (hasilProduk.error) {
-      console.error('Gagal memuat produk:', hasilProduk.error);
-      document.getElementById('daftarProduk').innerHTML =
-        '<p class="col-span-full text-red-500">Gagal memuat produk. Coba refresh halaman.</p>';
-      return;
+    if (hPengaturan.data && hPengaturan.data.data) pengaturan = hPengaturan.data.data;
+    else if (hPengaturan.error) console.error('Gagal memuat pengaturan:', hPengaturan.error);
+    if (hUlasan.error) console.error('Gagal memuat ulasan:', hUlasan.error);
+    semuaUlasan = hUlasan.data || [];
+    if (hProduk.error) {
+      console.error('Gagal memuat produk:', hProduk.error);
+      document.getElementById('daftarProduk').innerHTML = '<p class="col-span-full text-red-500">Gagal memuat produk. Coba refresh halaman.</p>';
+    } else {
+      daftarProduk = hProduk.data || [];
+      renderKatalog();
     }
-    if (hasilUlasan.error) console.error('Gagal memuat ulasan:', hasilUlasan.error);
-    daftarProduk = hasilProduk.data || [];
-    semuaUlasan = hasilUlasan.data || [];
-    renderKatalog();
+    renderPromo();
+  }
+
+  // Banner "gratis ongkir" di bagian atas, kalau aktif
+  function renderPromo() {
+    const fo = pengaturan.free_ongkir_non_cod || {};
+    const adaNonCod = metodeAktif().some((m) => m !== 'COD');
+    const el = document.getElementById('bannerPromo');
+    if (!fo.aktif || !adaNonCod) { el.classList.add('hidden'); return; }
+    const batas = Number(fo.maks) > 0 ? ` s/d ${rupiah(fo.maks)}` : '';
+    const min = Number(fo.min_belanja) > 0 ? ` (min. belanja ${rupiah(fo.min_belanja)})` : '';
+    el.textContent = `💸 Bayar via Transfer / QRIS: GRATIS ONGKIR${batas}${min}`;
+    el.classList.remove('hidden');
   }
 
   /* =====================================================================
-     1) KATALOG — kartu ringkas: foto utama, nama, rating, harga
+     1) KATALOG
      ===================================================================== */
   function renderKatalog() {
     const wadah = document.getElementById('daftarProduk');
-    if (!daftarProduk.length) {
-      wadah.innerHTML = '<p class="col-span-full text-slate-400">Belum ada produk.</p>';
-      return;
-    }
+    if (!daftarProduk.length) { wadah.innerHTML = '<p class="col-span-full text-slate-400">Belum ada produk.</p>'; return; }
     wadah.innerHTML = daftarProduk.map((p) => {
       const { list, rata } = statUlasan(p.id);
       return `
@@ -311,27 +322,23 @@
   }
 
   /* =====================================================================
-     POP-UP DETAIL PRODUK — galeri foto, deskripsi panjang, ulasan
+     POP-UP DETAIL PRODUK
      ===================================================================== */
   function bukaDetail(id) {
     detailAktif = daftarProduk.find((p) => Number(p.id) === Number(id));
     if (!detailAktif) return;
     renderDetail(0);
     document.getElementById('modalDetail').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';   // halaman belakang tidak ikut ter-scroll
+    document.body.style.overflow = 'hidden';
   }
-
   function tutupDetail() {
     document.getElementById('modalDetail').classList.add('hidden');
     document.body.style.overflow = '';
   }
-
-  // Gambar ulang isi pop-up; idxFoto = foto mana yang tampil besar
   function renderDetail(idxFoto) {
     const p = detailAktif;
     const foto = p.foto && p.foto.length ? p.foto : [fotoUtama(p)];
     const { list, rata } = statUlasan(p.id);
-
     const thumbnail = foto.length > 1 ? `
       <div class="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
         ${foto.map((f, i) => `
@@ -339,7 +346,6 @@
             <img src="${escapeHtml(f)}" alt="" class="w-16 h-16 object-cover" />
           </button>`).join('')}
       </div>` : '';
-
     const daftarUlasan = list.length
       ? list.map((u) => `
           <li class="py-3 border-t border-slate-100">
@@ -381,23 +387,67 @@
      2) CHECKOUT
      ===================================================================== */
   function pilihProduk(id) {
-    produkTerpilih = daftarProduk.find((p) => Number(p.id) === Number(id));
-    if (!produkTerpilih) return;
+    keranjang.produk = daftarProduk.find((p) => Number(p.id) === Number(id));
+    if (!keranjang.produk) return;
+    keranjang.jumlah = 1;
     tutupDetail();
     document.getElementById('checkoutKosong').classList.add('hidden');
     document.getElementById('checkoutForm').classList.remove('hidden');
     document.getElementById('hasilPesanan').classList.add('hidden');
-    document.getElementById('ringkasanProduk').innerHTML = `
-      <img src="${escapeHtml(fotoUtama(produkTerpilih))}" class="w-16 h-16 rounded-lg object-cover" alt="" />
-      <div>
-        <div class="font-semibold leading-tight">${escapeHtml(produkTerpilih.nama)}</div>
-        <div class="text-sm text-slate-500">1 x ${rupiah(produkTerpilih.harga)}</div>
-      </div>`;
+    renderPilihanBayar();
+    renderPilihanKurir();
     hitungOngkir();
     document.getElementById('checkout').scrollIntoView({ behavior: 'smooth' });
   }
 
-  const kurirTerpilih = () => document.querySelector('input[name="kurir"]:checked').value;
+  // Ubah jumlah barang (tombol − / +)
+  function ubahJumlah(selisih) {
+    keranjang.jumlah = Math.max(1, Math.min(20, keranjang.jumlah + selisih));
+    hitungOngkir();   // berat berubah → ongkir dihitung ulang
+  }
+
+  // Tombol pilihan cara bayar, dari pengaturan admin
+  function renderPilihanBayar() {
+    const daftar = metodeAktif();
+    if (!daftar.includes(keranjang.metode)) keranjang.metode = daftar[0] || 'COD';
+    const fo = pengaturan.free_ongkir_non_cod || {};
+    document.getElementById('pilihanBayar').innerHTML = daftar.map((m) => `
+      <label class="cursor-pointer">
+        <input type="radio" name="metode" value="${m}" class="peer sr-only" ${m === keranjang.metode ? 'checked' : ''} onchange="gantiMetode('${m}')" />
+        <div class="h-full rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
+          <div class="font-semibold">${NAMA_METODE[m]}</div>
+          <div class="text-xs text-slate-500">${m === 'COD' ? 'Bayar ke kurir saat paket sampai' : (fo.aktif ? '✨ Gratis ongkir' : 'Bayar dulu, lalu kirim bukti')}</div>
+        </div>
+      </label>`).join('');
+  }
+
+  function gantiMetode(m) {
+    keranjang.metode = m;
+    renderPilihanKurir();   // kurir non-COD jadi bisa dipilih / tidak
+    hitungOngkir();
+  }
+
+  // Tombol pilihan kurir; kalau COD, kurir yang tidak melayani COD dinonaktifkan
+  function renderPilihanKurir() {
+    const daftar = kurirAktif();
+    const bisaDipilih = (k) => keranjang.metode !== 'COD' || k.cod;
+    if (!keranjang.kurir || !daftar.some((k) => k.nama === keranjang.kurir && bisaDipilih(k))) {
+      keranjang.kurir = (daftar.find(bisaDipilih) || {}).nama || null;
+    }
+    document.getElementById('pilihanKurir').innerHTML = daftar.map((k) => {
+      const boleh = bisaDipilih(k);
+      return `
+        <label class="${boleh ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}">
+          <input type="radio" name="kurir" value="${escapeHtml(k.nama)}" class="peer sr-only" ${k.nama === keranjang.kurir ? 'checked' : ''} ${boleh ? '' : 'disabled'} />
+          <div class="h-full rounded-xl border-2 border-slate-200 p-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
+            <div class="font-semibold">${escapeHtml(k.nama)}</div>
+            <div class="text-xs text-slate-500">${k.cod ? 'Bisa COD' : 'Tidak bisa COD'}</div>
+          </div>
+        </label>`;
+    }).join('');
+    document.querySelectorAll('input[name="kurir"]').forEach((r) =>
+      r.addEventListener('change', () => { keranjang.kurir = r.value; hitungOngkir(); }));
+  }
 
   /* Simulasi API KiriminAja. API key asli itu RAHASIA → nanti dipanggil lewat
      Vercel Function (/api/ongkir), bukan langsung dari halaman ini. */
@@ -408,40 +458,123 @@
         if (!kota) return reject(new Error('Kota tujuan tidak dikenal'));
         const { tarif, hari } = TARIF_WILAYAH[kota.wilayah];
         const kg = Math.max(1, Math.ceil((berat_gram || 200) / 1000));
-        const selisihKurir = kurir === 'Ninja Xpress' ? -1000 : 0;
-        resolve({ tujuan, kurir, ongkir: tarif * kg + selisihKurir, estimasi: hari + ' hari' });
-      }, 400);
+        const k = kurirAktif().find((x) => x.nama === kurir) || {};
+        resolve({ ongkir: Math.max(0, tarif * kg + Number(k.selisih || 0)), estimasi: hari + ' hari' });
+      }, 300);
     });
   }
 
   async function hitungOngkir() {
-    if (!produkTerpilih) return;
+    if (!keranjang.produk) return;
     const kota = document.getElementById('inKota').value;
-    ongkirSaatIni = null;
-    if (!kota) { perbaruiRingkasan(); return; }
-    document.getElementById('rOngkir').textContent = 'Menghitung…';
-    try {
-      ongkirSaatIni = await simulasiApiKiriminAja({ tujuan: kota, kurir: kurirTerpilih(), berat_gram: produkTerpilih.berat_gram });
-    } catch (e) {
-      tampilkanToast('Gagal menghitung ongkir: ' + e.message);
+    keranjang.ongkir = null;
+    if (kota && keranjang.kurir) {
+      document.getElementById('rOngkir').textContent = 'Menghitung…';
+      try {
+        keranjang.ongkir = await simulasiApiKiriminAja({
+          tujuan: kota, kurir: keranjang.kurir, berat_gram: (keranjang.produk.berat_gram || 200) * keranjang.jumlah
+        });
+      } catch (e) {
+        tampilkanToast('Gagal menghitung ongkir: ' + e.message);
+      }
     }
     perbaruiRingkasan();
   }
 
+  /* Hitung total (PERKIRAAN di browser). Angka final dihitung ulang
+     oleh database saat pesanan dibuat, jadi tidak bisa diakali. */
+  function hitungTotal() {
+    const p = keranjang.produk;
+    const subtotal = p.harga * keranjang.jumlah;
+    const ongkir = keranjang.ongkir ? keranjang.ongkir.ongkir : 0;
+    let diskon = 0, potOngkir = 0;
+
+    const fo = pengaturan.free_ongkir_non_cod || {};
+    if (keranjang.metode !== 'COD' && fo.aktif && subtotal >= Number(fo.min_belanja || 0)) {
+      potOngkir = Number(fo.maks) > 0 ? Math.min(ongkir, Number(fo.maks)) : ongkir;
+    }
+
+    let pesanVoucher = '';
+    const v = keranjang.voucher;
+    if (v) {
+      if (v.khusus_non_cod && keranjang.metode === 'COD') pesanVoucher = 'Voucher ini khusus pembayaran Transfer / QRIS.';
+      else if (subtotal < Number(v.min_belanja || 0)) pesanVoucher = `Minimal belanja ${rupiah(v.min_belanja)} untuk voucher ini.`;
+      else if (v.tipe === 'nominal') diskon = Math.min(subtotal, v.nilai);
+      else if (v.tipe === 'persen') diskon = Math.min(Math.floor(subtotal * v.nilai / 100), v.maks_potongan ?? Infinity);
+      else if (v.tipe === 'ongkir') potOngkir = Math.max(potOngkir, Math.min(ongkir, v.maks_potongan ?? ongkir));
+    }
+    return { subtotal, ongkir, diskon, potOngkir, total: subtotal - diskon + ongkir - potOngkir, pesanVoucher };
+  }
+
   function perbaruiRingkasan() {
-    const harga = produkTerpilih ? produkTerpilih.harga : 0;
-    document.getElementById('rHarga').textContent = rupiah(harga);
-    if (ongkirSaatIni) {
-      document.getElementById('rOngkir').textContent = rupiah(ongkirSaatIni.ongkir);
-      document.getElementById('rKurirInfo').textContent = `(${ongkirSaatIni.kurir})`;
-      document.getElementById('rEstimasi').textContent = ongkirSaatIni.estimasi;
-      document.getElementById('rTotal').textContent = rupiah(harga + ongkirSaatIni.ongkir);
+    const p = keranjang.produk;
+    if (!p) return;
+    const t = hitungTotal();
+
+    document.getElementById('ringkasanProduk').innerHTML = `
+      <img src="${escapeHtml(fotoUtama(p))}" class="w-16 h-16 rounded-lg object-cover" alt="" />
+      <div class="flex-1">
+        <div class="font-semibold leading-tight">${escapeHtml(p.nama)}</div>
+        <div class="text-sm text-slate-500">${rupiah(p.harga)}</div>
+      </div>
+      <div class="flex items-center border border-slate-300 rounded-xl">
+        <button type="button" onclick="ubahJumlah(-1)" class="w-8 h-8 text-lg">−</button>
+        <span class="w-8 text-center font-semibold">${keranjang.jumlah}</span>
+        <button type="button" onclick="ubahJumlah(1)" class="w-8 h-8 text-lg">+</button>
+      </div>`;
+
+    document.getElementById('rJumlah').textContent = `(${keranjang.jumlah} barang)`;
+    document.getElementById('rSubtotal').textContent = rupiah(t.subtotal);
+    document.getElementById('barisDiskon').classList.toggle('hidden', !t.diskon);
+    document.getElementById('rDiskon').textContent = '−' + rupiah(t.diskon);
+    document.getElementById('barisPotOngkir').classList.toggle('hidden', !t.potOngkir);
+    document.getElementById('rPotOngkir').textContent = '−' + rupiah(t.potOngkir);
+
+    if (keranjang.ongkir) {
+      document.getElementById('rOngkir').textContent = rupiah(t.ongkir);
+      document.getElementById('rKurirInfo').textContent = `(${keranjang.kurir})`;
+      document.getElementById('rEstimasi').textContent = keranjang.ongkir.estimasi;
     } else {
-      document.getElementById('rOngkir').textContent = 'Pilih kota';
+      document.getElementById('rOngkir').textContent = keranjang.kurir ? 'Pilih kota' : 'Pilih kurir';
       document.getElementById('rKurirInfo').textContent = '';
       document.getElementById('rEstimasi').textContent = '-';
-      document.getElementById('rTotal').textContent = rupiah(harga);
     }
+    document.getElementById('labelTotal').textContent = keranjang.metode === 'COD' ? 'Total bayar ke kurir' : 'Total transfer';
+    document.getElementById('rTotal').textContent = rupiah(t.total);
+
+    const pesan = document.getElementById('pesanVoucher');
+    if (keranjang.voucher) {
+      pesan.className = 'text-xs mt-1 ' + (t.pesanVoucher ? 'text-amber-700' : 'text-emerald-700');
+      pesan.innerHTML = (t.pesanVoucher || `✓ Voucher ${escapeHtml(keranjang.voucher.kode)} dipakai`) +
+        ' · <button type="button" class="underline" onclick="hapusVoucher()">hapus</button>';
+    }
+  }
+
+  // Cek kode voucher ke database
+  async function pakaiVoucher() {
+    const kode = document.getElementById('inVoucher').value.trim().toUpperCase();
+    const pesan = document.getElementById('pesanVoucher');
+    if (!kode || !keranjang.produk) return;
+    if (!sb) { pesan.className = 'text-xs mt-1 text-red-600'; pesan.textContent = 'Voucher belum bisa dipakai.'; return; }
+    const { data, error } = await sb.rpc('cek_voucher', {
+      p_kode: kode, p_subtotal: keranjang.produk.harga * keranjang.jumlah, p_metode: keranjang.metode
+    });
+    if (error || !data || !data.valid) {
+      keranjang.voucher = null;
+      pesan.className = 'text-xs mt-1 text-red-600';
+      pesan.textContent = (data && data.pesan) || 'Voucher tidak bisa dipakai.';
+      perbaruiRingkasan();
+      return;
+    }
+    keranjang.voucher = data;
+    perbaruiRingkasan();
+  }
+
+  function hapusVoucher() {
+    keranjang.voucher = null;
+    document.getElementById('inVoucher').value = '';
+    document.getElementById('pesanVoucher').textContent = '';
+    perbaruiRingkasan();
   }
 
   function ambilDataForm() {
@@ -449,98 +582,137 @@
       nama: document.getElementById('inNama').value.trim(),
       no_hp: normalisasiHp(document.getElementById('inHp').value),
       alamat: document.getElementById('inAlamat').value.trim(),
-      kota: document.getElementById('inKota').value,
-      kurir: kurirTerpilih()
+      kota: document.getElementById('inKota').value
     };
-    if (!produkTerpilih) { tampilkanToast('Pilih produk dulu.'); return null; }
+    if (!keranjang.produk) { tampilkanToast('Pilih produk dulu.'); return null; }
     if (!data.nama) { tampilkanToast('Nama wajib diisi.'); return null; }
     if (data.no_hp.length < 10) { tampilkanToast('Nomor WhatsApp belum valid.'); return null; }
     if (!data.alamat) { tampilkanToast('Alamat wajib diisi.'); return null; }
-    if (!data.kota || !ongkirSaatIni) { tampilkanToast('Pilih kota tujuan dulu.'); return null; }
+    if (!data.kota) { tampilkanToast('Pilih kota tujuan dulu.'); return null; }
+    if (!keranjang.kurir) { tampilkanToast('Pilih kurir dulu.'); return null; }
+    if (!keranjang.ongkir) { tampilkanToast('Ongkir belum terhitung, coba pilih ulang kota.'); return null; }
+    if (keranjang.voucher && hitungTotal().pesanVoucher) { tampilkanToast('Voucher belum memenuhi syarat. Hapus dulu atau ubah pesanan.'); return null; }
     return data;
   }
 
-  /* Tombol "Buat Pesanan": simpan ke database, lalu buka WhatsApp penjual.
-     Kalau simpan gagal, WhatsApp tetap dibuka supaya pesanan tidak hilang. */
+  /* Tombol "Buat Pesanan": database menghitung total final & menyimpan,
+     lalu WhatsApp penjual dibuka dengan detail pesanan. */
   async function buatPesanan() {
     const form = ambilDataForm();
     if (!form) return;
-
-    // Buka tab saat diklik (kalau dibuka belakangan, sering diblokir browser)
-    const tabWA = window.open('', '_blank');
 
     const tombol = document.getElementById('btnPesan');
     tombol.disabled = true;
     tombol.textContent = 'Memproses…';
 
-    const pesanan = {
-      resi: buatNoPesanan(),
+    const kiriman = {
       ...form,
-      produk_id: produkTerpilih.id,
-      produk_nama: produkTerpilih.nama,
-      harga: produkTerpilih.harga,
-      ongkir: ongkirSaatIni.ongkir,
-      total: produkTerpilih.harga + ongkirSaatIni.ongkir
+      produk_id: keranjang.produk.id,
+      jumlah: keranjang.jumlah,
+      metode_bayar: keranjang.metode,
+      kurir: keranjang.kurir,
+      ongkir: keranjang.ongkir.ongkir,
+      kode_voucher: keranjang.voucher ? keranjang.voucher.kode : null
     };
 
+    let hasil = null;
     let tersimpan = false;
     if (sb) {
-      try {
-        // Daftarkan pembeli (kalau nomor HP sudah ada, dilewati)
-        const r1 = await sb.from('pembeli').upsert({ no_hp: form.no_hp, nama: form.nama }, { onConflict: 'no_hp', ignoreDuplicates: true });
-        if (r1.error) throw r1.error;
-        const r2 = await sb.from('pesanan').insert(pesanan);
-        if (r2.error) throw r2.error;
+      const { data, error } = await sb.rpc('buat_pesanan', { p: kiriman });
+      if (error) {
+        console.error('Gagal membuat pesanan:', error);
+        // Pesan dari database (mis. voucher habis) ditampilkan ke pembeli
+        const pesanDb = error.message && !/fetch|network/i.test(error.message) ? error.message : '';
+        if (pesanDb) {
+          tombol.disabled = false;
+          tombol.textContent = 'Buat Pesanan';
+          tampilkanToast(pesanDb);
+          return;
+        }
+      } else {
+        hasil = data;
         tersimpan = true;
-      } catch (e) {
-        console.error('Gagal simpan pesanan:', e);
       }
     }
+    // Cadangan kalau database tidak bisa dihubungi: hitung di browser, kirim via WA saja
+    if (!hasil) {
+      const t = hitungTotal();
+      hasil = {
+        resi: 'SBY' + Date.now().toString().slice(-8), no_hp: form.no_hp, produk_nama: keranjang.produk.nama,
+        harga: keranjang.produk.harga, jumlah: keranjang.jumlah, subtotal: t.subtotal, diskon: t.diskon,
+        kode_voucher: kiriman.kode_voucher, ongkir: t.ongkir, potongan_ongkir: t.potOngkir, total: t.total,
+        metode_bayar: keranjang.metode
+      };
+    }
 
-    tampilkanHasilPesanan(pesanan, tersimpan);
-
+    // Buka WhatsApp penjual
     const teks = [
-      `Halo ${CFG.NAMA_TOKO}, saya mau pesan (COD):`,
+      `Halo ${CFG.NAMA_TOKO}, saya mau pesan:`,
       '',
-      `🔖 No. Pesanan : ${pesanan.resi}`,
-      `🛍️ Produk : ${pesanan.produk_nama}`,
-      `👤 Nama   : ${pesanan.nama}`,
-      `📱 No HP  : ${pesanan.no_hp}`,
-      `🏠 Alamat : ${pesanan.alamat}, ${pesanan.kota}`,
-      `🚚 Kurir  : ${pesanan.kurir} (COD)`,
+      `🔖 No. Pesanan : ${hasil.resi}`,
+      `🛍️ Produk : ${hasil.produk_nama} x${hasil.jumlah}`,
+      `👤 Nama   : ${form.nama}`,
+      `📱 No HP  : ${hasil.no_hp}`,
+      `🏠 Alamat : ${form.alamat}, ${form.kota}`,
+      `🚚 Kurir  : ${keranjang.kurir}`,
+      `💳 Bayar  : ${NAMA_METODE[hasil.metode_bayar]}`,
       '',
-      `Harga  : ${rupiah(pesanan.harga)}`,
-      `Ongkir : ${rupiah(pesanan.ongkir)}`,
-      `*Total Tagihan COD : ${rupiah(pesanan.total)}*`,
+      `Subtotal : ${rupiah(hasil.subtotal)}`,
+      hasil.diskon ? `Diskon (${hasil.kode_voucher}) : −${rupiah(hasil.diskon)}` : null,
+      `Ongkir   : ${rupiah(hasil.ongkir)}`,
+      hasil.potongan_ongkir ? `Gratis ongkir : −${rupiah(hasil.potongan_ongkir)}` : null,
+      `*Total ${hasil.metode_bayar === 'COD' ? 'Tagihan COD' : 'Transfer'} : ${rupiah(hasil.total)}*`,
       '',
-      'Mohon diproses, terima kasih 🙏'
-    ].join('\n');
+      hasil.metode_bayar === 'COD' ? 'Mohon diproses, terima kasih 🙏' : 'Saya akan kirim bukti pembayaran di chat ini 🙏'
+    ].filter((b) => b !== null).join('\n');
     const urlWA = `https://wa.me/${CFG.NOMOR_WA_PENJUAL}?text=${encodeURIComponent(teks)}`;
-    if (tabWA) tabWA.location.href = urlWA;
-    else window.location.href = urlWA;
+
+    tampilkanHasilPesanan(hasil, tersimpan, urlWA);
+    // COD: langsung buka WA. Non-COD: pembeli lihat info rekening dulu, lalu klik tombol WA.
+    if (hasil.metode_bayar === 'COD') window.open(urlWA, '_blank');
 
     tombol.disabled = false;
     tombol.textContent = 'Buat Pesanan';
   }
 
-  function tampilkanHasilPesanan(p, tersimpan) {
+  function tampilkanHasilPesanan(h, tersimpan, urlWA) {
     const kotak = document.getElementById('hasilPesanan');
     kotak.classList.remove('hidden');
+    let infoBayar = '';
+    if (h.metode_bayar === 'Transfer') {
+      const rek = pengaturan.pembayaran.transfer.rekening || [];
+      infoBayar = `
+        <div class="mt-3 font-semibold">Silakan transfer ${rupiah(h.total)} ke:</div>
+        ${rek.map((r) => `
+          <div class="mt-2 rounded-lg bg-white border border-emerald-200 p-3">
+            <div class="text-xs text-slate-500">${escapeHtml(r.bank)} a.n. ${escapeHtml(r.atas_nama)}</div>
+            <div class="flex justify-between items-center">
+              <b class="font-mono text-base select-all">${escapeHtml(r.nomor)}</b>
+              <button type="button" onclick="navigator.clipboard.writeText('${escapeHtml(r.nomor)}'); tampilkanToast('Nomor rekening disalin')" class="text-xs underline">Salin</button>
+            </div>
+          </div>`).join('')}`;
+    } else if (h.metode_bayar === 'QRIS') {
+      const gambar = pengaturan.pembayaran.qris.gambar;
+      infoBayar = `
+        <div class="mt-3 font-semibold">Scan QRIS dan bayar ${rupiah(h.total)}:</div>
+        ${gambar ? `<img src="${escapeHtml(gambar)}" alt="QRIS" class="mt-2 w-full max-w-xs mx-auto rounded-lg border" />` : '<p class="text-xs text-amber-700">Gambar QRIS belum tersedia, hubungi penjual via WA.</p>'}`;
+    }
     kotak.innerHTML = `
-      <div class="font-semibold text-emerald-700">✅ Pesanan dikirim ke WhatsApp penjual</div>
-      <div class="mt-1">No. pesanan: <b class="font-mono">${escapeHtml(p.resi)}</b></div>
-      <div>Total COD: <b>${rupiah(p.total)}</b></div>
-      <div class="mt-2 text-xs text-slate-500">Pastikan pesan di WhatsApp sudah Anda <b>kirim</b>. Simpan nomor pesanan untuk melacak paket.</div>
+      <div class="font-semibold text-emerald-700">✅ Pesanan dibuat</div>
+      <div class="mt-1">No. pesanan: <b class="font-mono">${escapeHtml(h.resi)}</b></div>
+      <div>Total: <b>${rupiah(h.total)}</b> (${NAMA_METODE[h.metode_bayar]})</div>
+      ${infoBayar}
+      <a href="${urlWA}" target="_blank" class="mt-3 block text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg">
+        ${h.metode_bayar === 'COD' ? 'Buka WhatsApp lagi' : 'Kirim bukti bayar via WhatsApp'}
+      </a>
       ${tersimpan
-        ? `<button onclick="isiLacak('${p.resi}')" class="mt-2 underline text-emerald-700">Lacak pesanan ini →</button>`
+        ? `<button onclick="isiLacak('${h.resi}')" class="mt-2 underline text-emerald-700">Lacak pesanan ini →</button>`
         : '<div class="mt-2 text-xs text-amber-700">Catatan: pesanan belum tercatat di sistem lacak.</div>'}`;
   }
 
   /* =====================================================================
      3) LACAK PESANAN + ULASAN
      ===================================================================== */
-  const URUTAN_STATUS = ['Dikemas', 'Dikirim', 'Selesai'];
-
   function isiLacak(resi) {
     document.getElementById('inLacak').value = resi;
     document.getElementById('lacak').scrollIntoView({ behavior: 'smooth' });
@@ -552,23 +724,14 @@
     const wadah = document.getElementById('hasilLacak');
     if (!kataKunci) { tampilkanToast('Masukkan nomor HP atau nomor pesanan.'); return; }
     if (!sb) { wadah.innerHTML = '<p class="text-slate-500 text-sm">Fitur lacak belum aktif.</p>'; return; }
-
     wadah.innerHTML = '<p class="text-slate-400 text-sm">Mencari…</p>';
-    // Ada huruf → nomor pesanan; hanya angka → nomor HP
     const adaHuruf = /[a-z]/i.test(kataKunci);
     const { data, error } = await sb.rpc('lacak_pesanan', {
       p_hp: adaHuruf ? null : normalisasiHp(kataKunci),
       p_resi: adaHuruf ? kataKunci.toUpperCase().replace(/[^A-Z0-9]/g, '') : null
     });
-    if (error) {
-      console.error(error);
-      wadah.innerHTML = '<p class="text-red-500 text-sm">Terjadi kesalahan. Coba lagi sebentar.</p>';
-      return;
-    }
-    if (!data || !data.length) {
-      wadah.innerHTML = '<p class="text-slate-500 text-sm">Pesanan tidak ditemukan. Periksa kembali nomor HP / nomor pesanan.</p>';
-      return;
-    }
+    if (error) { console.error(error); wadah.innerHTML = '<p class="text-red-500 text-sm">Terjadi kesalahan. Coba lagi sebentar.</p>'; return; }
+    if (!data || !data.length) { wadah.innerHTML = '<p class="text-slate-500 text-sm">Pesanan tidak ditemukan. Periksa kembali nomor HP / nomor pesanan.</p>'; return; }
     hasilLacak = {};
     data.forEach((p) => { hasilLacak[p.resi] = p; });
     const sudahDiulas = new Set(semuaUlasan.map((u) => u.pesanan_resi));
@@ -576,18 +739,21 @@
   }
 
   function kartuPesanan(p, sudahDiulas) {
-    const idx = URUTAN_STATUS.indexOf(p.status);
-    const langkah = URUTAN_STATUS.map((s, i) => `
-      <div class="flex-1 text-center">
-        <div class="mx-auto w-8 h-8 rounded-full grid place-items-center text-sm font-bold ${i <= idx ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">${i + 1}</div>
-        <div class="text-xs mt-1 ${i <= idx ? 'text-emerald-700 font-semibold' : 'text-slate-400'}">${s}</div>
-      </div>`).join('<div class="flex-1 h-0.5 bg-slate-200 mt-4"></div>');
+    const urutan = p.metode_bayar === 'COD' ? ['Dikemas', 'Dikirim', 'Selesai'] : ['Menunggu Bayar', 'Dikemas', 'Dikirim', 'Selesai'];
+    const idx = urutan.indexOf(p.status);
+    const langkah = p.status === 'Dibatalkan'
+      ? '<div class="w-full text-center text-sm font-semibold text-red-600 bg-red-50 rounded-lg py-2">Pesanan dibatalkan</div>'
+      : urutan.map((s, i) => `
+          <div class="flex-1 text-center">
+            <div class="mx-auto w-8 h-8 rounded-full grid place-items-center text-sm font-bold ${i <= idx ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">${i + 1}</div>
+            <div class="text-xs mt-1 ${i <= idx ? 'text-emerald-700 font-semibold' : 'text-slate-400'}">${s}</div>
+          </div>`).join('<div class="flex-1 h-0.5 bg-slate-200 mt-4"></div>');
 
     let bagianBawah = '';
     if (p.status === 'Selesai') {
-      bagianBawah = sudahDiulas
-        ? '<p class="mt-4 text-sm text-emerald-700">⭐ Terima kasih, ulasan Anda sudah tersimpan.</p>'
-        : formUlasan(p);
+      bagianBawah = sudahDiulas ? '<p class="mt-4 text-sm text-emerald-700">⭐ Terima kasih, ulasan Anda sudah tersimpan.</p>' : formUlasan(p);
+    } else if (p.status === 'Menunggu Bayar') {
+      bagianBawah = '<p class="mt-4 text-sm text-amber-700">Menunggu pembayaran. Kirim bukti bayar ke WhatsApp penjual supaya pesanan segera diproses.</p>';
     }
 
     return `
@@ -596,8 +762,8 @@
           <div><span class="text-slate-500">No. Pesanan</span> <b class="font-mono">${escapeHtml(p.resi)}</b></div>
           <div class="text-slate-500">${escapeHtml(p.kurir)} • ${escapeHtml(p.kota)}</div>
         </div>
-        <div class="mt-1 font-semibold">${escapeHtml(p.produk_nama)}</div>
-        <div class="text-sm text-slate-500">Total COD ${rupiah(p.total)}</div>
+        <div class="mt-1 font-semibold">${escapeHtml(p.produk_nama)} x${p.jumlah || 1}</div>
+        <div class="text-sm text-slate-500">Total ${rupiah(p.total)} • ${NAMA_METODE[p.metode_bayar] || p.metode_bayar}</div>
         ${p.resi_kurir ? `<div class="mt-2 text-sm">No. Resi ${escapeHtml(p.kurir)}: <b class="font-mono select-all">${escapeHtml(p.resi_kurir)}</b></div>` : ''}
         <div class="flex items-start mt-4">${langkah}</div>
         ${bagianBawah}
@@ -632,32 +798,24 @@
     const komentar = document.getElementById('komentar-' + resi).value.trim();
     if (!p) return;
     if (rating < 1) { tampilkanToast('Pilih rating bintang dulu.'); return; }
-
     const { error } = await sb.from('ulasan').insert({ produk_id: p.produk_id, pesanan_resi: resi, nama: p.nama, rating, komentar });
-    if (error) {
-      console.error(error);
-      tampilkanToast('Gagal mengirim ulasan.');
-      return;
-    }
+    if (error) { console.error(error); tampilkanToast('Gagal mengirim ulasan.'); return; }
     tampilkanToast('Terima kasih atas ulasannya!');
-    await muatProdukDanUlasan();   // rating di katalog ikut diperbarui
+    await muatSemua();
     lacakPesanan();
   }
 
   /* =====================================================================
-     MULAI — dijalankan sekali saat halaman dibuka
+     MULAI
      ===================================================================== */
   function init() {
     document.getElementById('namaToko').textContent = CFG.NAMA_TOKO;
     document.querySelectorAll('.namaTokoFooter').forEach((el) => { el.textContent = CFG.NAMA_TOKO; });
     document.getElementById('tahun').textContent = new Date().getFullYear();
 
-    // Sambungkan ke Supabase kalau URL & key sudah diisi di config.js
     const keyTerisi = CFG.SUPABASE_ANON_KEY && !CFG.SUPABASE_ANON_KEY.startsWith('TEMPEL');
     try {
-      if (CFG.SUPABASE_URL && keyTerisi && window.supabase) {
-        sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
-      }
+      if (CFG.SUPABASE_URL && keyTerisi && window.supabase) sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
     } catch (e) {
       console.error('Gagal menyambung ke Supabase:', e);
       sb = null;
@@ -672,11 +830,11 @@
     select.innerHTML = '<option value="">— Pilih kota tujuan —</option>' +
       KOTA_TUJUAN.map((k) => `<option value="${k.nama}">${k.nama} (${k.wilayah})</option>`).join('');
     select.addEventListener('change', hitungOngkir);
-    document.querySelectorAll('input[name="kurir"]').forEach((r) => r.addEventListener('change', hitungOngkir));
+    document.getElementById('inVoucher').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); pakaiVoucher(); } });
     document.getElementById('inLacak').addEventListener('keydown', (e) => { if (e.key === 'Enter') lacakPesanan(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') tutupDetail(); });
 
-    muatProdukDanUlasan();
+    muatSemua();
   }
 
   document.addEventListener('DOMContentLoaded', init);

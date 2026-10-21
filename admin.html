@@ -46,6 +46,8 @@
         <button data-tab="pesanan" onclick="gantiTab('pesanan')" class="tab px-4 py-2.5 border-b-2">📦 Pesanan</button>
         <button data-tab="produk"  onclick="gantiTab('produk')"  class="tab px-4 py-2.5 border-b-2">🛍️ Produk</button>
         <button data-tab="ulasan"  onclick="gantiTab('ulasan')"  class="tab px-4 py-2.5 border-b-2">⭐ Ulasan</button>
+        <button data-tab="voucher" onclick="gantiTab('voucher')" class="tab px-4 py-2.5 border-b-2">🎟️ Voucher</button>
+        <button data-tab="pengaturan" onclick="gantiTab('pengaturan')" class="tab px-4 py-2.5 border-b-2">⚙️ Pengaturan</button>
       </nav>
     </header>
 
@@ -74,7 +76,28 @@
 
       <!-- ---------- TAB ULASAN ---------- -->
       <section id="tab-ulasan" class="isi-tab hidden">
+        <div class="flex justify-between items-center mb-4">
+          <p class="text-sm text-slate-500">Ulasan tampil di halaman detail produk.</p>
+          <button onclick="bukaFormUlasan()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl">+ Tambah Ulasan</button>
+        </div>
         <div id="daftarUlasanAdmin" class="space-y-3"></div>
+      </section>
+
+      <!-- ---------- TAB VOUCHER ---------- -->
+      <section id="tab-voucher" class="isi-tab hidden">
+        <div class="flex justify-between items-center mb-4">
+          <p class="text-sm text-slate-500">Kode voucher tidak terlihat oleh pembeli sampai mereka mengetiknya.</p>
+          <button onclick="bukaFormVoucher(null)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl">+ Buat Voucher</button>
+        </div>
+        <div id="daftarVoucher" class="space-y-3"></div>
+      </section>
+
+      <!-- ---------- TAB PENGATURAN ---------- -->
+      <section id="tab-pengaturan" class="isi-tab hidden">
+        <div id="formPengaturan" class="space-y-6"></div>
+        <div class="sticky bottom-0 bg-slate-100/90 backdrop-blur py-4 mt-6">
+          <button id="btnSimpanPengaturan" onclick="simpanPengaturan()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-xl">Simpan Pengaturan</button>
+        </div>
       </section>
     </main>
   </div>
@@ -137,6 +160,105 @@
     </div>
   </div>
 
+  <!-- ===================== POP-UP VOUCHER ===================== -->
+  <div id="modalVoucher" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" onclick="tutupModal('modalVoucher')"></div>
+    <div class="relative bg-white w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl sm:m-6 p-5 sm:p-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 id="judulFormVoucher" class="text-lg font-bold">Voucher</h2>
+        <button onclick="tutupModal('modalVoucher')" class="w-9 h-9 rounded-full hover:bg-slate-100 text-2xl leading-none">×</button>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="vKode">Kode</label>
+          <input id="vKode" type="text" placeholder="HEMAT10" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 uppercase font-mono" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="vTipe">Jenis</label>
+          <select id="vTipe" onchange="aturFormVoucher()" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white">
+            <option value="nominal">Potongan Rupiah</option>
+            <option value="persen">Diskon Persen</option>
+            <option value="ongkir">Gratis Ongkir</option>
+          </select>
+        </div>
+        <div id="wadahNilai">
+          <label class="block text-sm font-medium mb-1" for="vNilai" id="labelNilai">Potongan (Rp)</label>
+          <input id="vNilai" type="number" min="0" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div id="wadahMaks">
+          <label class="block text-sm font-medium mb-1" for="vMaks">Maks. potongan (Rp)</label>
+          <input id="vMaks" type="number" min="0" placeholder="Kosong = tanpa batas" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="vMin">Min. belanja (Rp)</label>
+          <input id="vMin" type="number" min="0" placeholder="0" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="vKuota">Kuota pemakaian</label>
+          <input id="vKuota" type="number" min="1" placeholder="Kosong = tanpa batas" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-medium mb-1" for="vSampai">Berlaku sampai</label>
+          <input id="vSampai" type="date" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+          <p class="text-xs text-slate-400 mt-1">Kosongkan kalau tidak ada batas waktu.</p>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 text-sm"><input id="vNonCod" type="checkbox" class="w-4 h-4" /> Khusus pembayaran Transfer / QRIS (tidak bisa untuk COD)</label>
+      <label class="flex items-center gap-2 text-sm"><input id="vAktif" type="checkbox" class="w-4 h-4" checked /> Aktif</label>
+      <div class="flex gap-3 pt-2">
+        <button id="btnHapusVoucher" onclick="hapusVoucher()" class="hidden px-4 text-red-600 font-semibold">Hapus</button>
+        <button onclick="tutupModal('modalVoucher')" class="flex-1 bg-slate-100 hover:bg-slate-200 font-semibold py-3 rounded-xl">Batal</button>
+        <button onclick="simpanVoucher()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== POP-UP TAMBAH ULASAN ===================== -->
+  <div id="modalUlasan" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" onclick="tutupModal('modalUlasan')"></div>
+    <div class="relative bg-white w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl sm:m-6 p-5 sm:p-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-bold">Tambah Ulasan</h2>
+        <button onclick="tutupModal('modalUlasan')" class="w-9 h-9 rounded-full hover:bg-slate-100 text-2xl leading-none">×</button>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="uProduk">Produk</label>
+        <select id="uProduk" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white"></select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="uNama">Nama pembeli</label>
+          <input id="uNama" type="text" placeholder="a****3" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="uRating">Bintang</label>
+          <select id="uRating" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white">
+            <option value="5">★★★★★ (5)</option><option value="4">★★★★☆ (4)</option><option value="3">★★★☆☆ (3)</option>
+            <option value="2">★★☆☆☆ (2)</option><option value="1">★☆☆☆☆ (1)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="uTanggal">Tanggal ulasan</label>
+          <input id="uTanggal" type="date" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="uSumber">Sumber (catatan internal)</label>
+          <select id="uSumber" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white">
+            <option>Shopee</option><option>Tokopedia</option><option>TikTok Shop</option><option>WhatsApp</option><option>Lainnya</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="uKomentar">Isi ulasan</label>
+        <textarea id="uKomentar" rows="4" placeholder="Salin isi ulasan apa adanya" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="tutupModal('modalUlasan')" class="flex-1 bg-slate-100 hover:bg-slate-200 font-semibold py-3 rounded-xl">Batal</button>
+        <button onclick="simpanUlasanManual()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl">Simpan</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg opacity-0 pointer-events-none transition-opacity z-50"></div>
 
 
@@ -146,12 +268,18 @@
      ===================================================================== */
   const CFG = Object.assign({ NAMA_TOKO: 'F3A Store', SUPABASE_URL: '', SUPABASE_ANON_KEY: '' }, window.KONFIG || {});
   const BUCKET_FOTO = 'produk';            // nama tempat penyimpanan foto di Supabase Storage
-  const STATUS = ['Dikemas', 'Dikirim', 'Selesai'];
+  const STATUS = ['Menunggu Bayar', 'Dikemas', 'Dikirim', 'Selesai', 'Dibatalkan'];
   const WARNA_STATUS = {
+    'Menunggu Bayar': 'bg-orange-100 text-orange-800',
     Dikemas: 'bg-amber-100 text-amber-800',
     Dikirim: 'bg-sky-100 text-sky-800',
-    Selesai: 'bg-emerald-100 text-emerald-800'
+    Selesai: 'bg-emerald-100 text-emerald-800',
+    Dibatalkan: 'bg-red-100 text-red-700'
   };
+  const NAMA_METODE = { COD: 'COD', Transfer: 'Transfer Bank', QRIS: 'QRIS' };
+  let pengaturanData = null;   // pengaturan toko (pembayaran, gratis ongkir, kurir)
+  let voucherData = [];
+  let idVoucherEdit = null;
 
   let sb = null;
   let pesananData = [];
@@ -196,6 +324,7 @@
     }
     document.getElementById('layarLogin').classList.add('hidden');
     document.getElementById('layarAdmin').classList.remove('hidden');
+    await muatPengaturan();   // dipakai juga untuk info rekening di pesan WA
     gantiTab('pesanan');
   }
 
@@ -220,6 +349,12 @@
     if (nama === 'pesanan') muatPesanan();
     if (nama === 'produk') muatProduk();
     if (nama === 'ulasan') muatUlasan();
+    if (nama === 'voucher') muatVoucher();
+    if (nama === 'pengaturan') muatPengaturan().then(renderPengaturan);
+  }
+
+  function tutupModal(id) {
+    document.getElementById(id).classList.add('hidden');
   }
 
   /* =====================================================================
@@ -272,10 +407,11 @@
             <div class="text-slate-500 mt-1">${escapeHtml(p.alamat)}, ${escapeHtml(p.kota)}</div>
           </div>
           <div>
-            <div>${escapeHtml(p.produk_nama)}</div>
-            <div class="text-slate-500">${escapeHtml(p.kurir)} (COD)</div>
-            <div class="text-slate-500">${rupiah(p.harga)} + ongkir ${rupiah(p.ongkir)}</div>
-            <div class="font-bold">Total COD ${rupiah(p.total)}</div>
+            <div>${escapeHtml(p.produk_nama)} <b>x${p.jumlah || 1}</b></div>
+            <div class="text-slate-500">${escapeHtml(p.kurir)} • <span class="font-semibold ${p.metode_bayar === 'COD' ? 'text-slate-700' : 'text-sky-700'}">${NAMA_METODE[p.metode_bayar] || 'COD'}</span></div>
+            <div class="text-slate-500">Subtotal ${rupiah(p.subtotal ?? p.harga)}${p.diskon ? ` − diskon ${rupiah(p.diskon)} <span class="font-mono">(${escapeHtml(p.kode_voucher)})</span>` : ''}</div>
+            <div class="text-slate-500">Ongkir ${rupiah(p.ongkir)}${p.potongan_ongkir ? ` − gratis ongkir ${rupiah(p.potongan_ongkir)}` : ''}</div>
+            <div class="font-bold">Total ${p.metode_bayar === 'COD' ? 'COD' : 'transfer'} ${rupiah(p.total)}</div>
           </div>
           <div class="space-y-2">
             <select id="st-${p.id}" class="w-full rounded-lg border border-slate-300 px-2 py-2 bg-white">
@@ -307,15 +443,33 @@
     const p = pesananData.find((x) => x.id === id);
     if (!p) return;
     const sapaan = `Halo kak ${p.nama} 👋`;
+    const cod = p.metode_bayar === 'COD' || !p.metode_bayar;
+    const produk = `${p.produk_nama} x${p.jumlah || 1}`;
     let isi;
-    if (p.status === 'Dikemas') {
+    if (p.status === 'Menunggu Bayar') {
+      const bayar = (pengaturanData && pengaturanData.pembayaran) || {};
+      const infoBayar = p.metode_bayar === 'Transfer'
+        ? (bayar.transfer?.rekening || []).map((r) => `${r.bank} ${r.nomor} a.n. ${r.atas_nama}`)
+        : ['Scan QRIS yang tampil di website saat checkout.'];
       isi = [
         sapaan, '',
-        `Pesanan kakak di ${CFG.NAMA_TOKO} sudah kami terima dan sedang dikemas 📦`, '',
+        `Terima kasih sudah order di ${CFG.NAMA_TOKO} 🙏`, '',
         `No. Pesanan : ${p.resi}`,
-        `Produk      : ${p.produk_nama}`,
-        `Kurir       : ${p.kurir} (COD)`,
-        `Total COD   : ${rupiah(p.total)}`, '',
+        `Produk      : ${produk}`,
+        `*Total bayar : ${rupiah(p.total)}*`, '',
+        `Silakan lakukan pembayaran via ${NAMA_METODE[p.metode_bayar]}:`,
+        ...infoBayar, '',
+        'Setelah bayar, mohon kirim bukti transfer di chat ini ya kak. Pesanan langsung kami proses.'
+      ];
+    } else if (p.status === 'Dikemas') {
+      isi = [
+        sapaan, '',
+        cod ? `Pesanan kakak di ${CFG.NAMA_TOKO} sudah kami terima dan sedang dikemas 📦`
+            : `Pembayaran sudah kami terima ✅ Pesanan kakak sedang dikemas 📦`, '',
+        `No. Pesanan : ${p.resi}`,
+        `Produk      : ${produk}`,
+        `Kurir       : ${p.kurir}${cod ? ' (COD)' : ''}`,
+        cod ? `Total COD   : ${rupiah(p.total)}` : null, '',
         'Kami kabari lagi setelah paket dikirim ya kak. Terima kasih 🙏'
       ];
     } else if (p.status === 'Dikirim') {
@@ -325,9 +479,15 @@
         `No. Pesanan : ${p.resi}`,
         `Kurir       : ${p.kurir}`,
         p.resi_kurir ? `No. Resi    : ${p.resi_kurir}` : null,
-        `Total COD   : ${rupiah(p.total)}`, '',
+        cod ? `Total COD   : ${rupiah(p.total)}` : null, '',
         `Cek status paket di ${linkToko()} (menu Lacak, masukkan no. pesanan).`,
-        'Mohon siapkan uang pas saat kurir datang ya kak 🙏'
+        cod ? 'Mohon siapkan uang pas saat kurir datang ya kak 🙏' : 'Ditunggu paketnya ya kak 🙏'
+      ];
+    } else if (p.status === 'Dibatalkan') {
+      isi = [
+        sapaan, '',
+        `Pesanan ${p.resi} (${produk}) kami batalkan.`,
+        'Kalau ada pertanyaan atau mau order ulang, silakan balas chat ini ya kak 🙏'
       ];
     } else {
       isi = [
@@ -511,11 +671,40 @@
       <div class="bg-white rounded-2xl border border-slate-200 p-4 flex justify-between gap-4">
         <div class="text-sm">
           <div><b>${escapeHtml(u.nama)}</b> <span class="text-amber-500">${'★'.repeat(u.rating)}${'☆'.repeat(5 - u.rating)}</span></div>
-          <div class="text-slate-500">${escapeHtml(namaProduk(u.produk_id))} • ${escapeHtml(u.pesanan_resi)} • ${tanggal(u.created_at)}</div>
+          <div class="text-slate-500">${escapeHtml(namaProduk(u.produk_id))} • ${u.pesanan_resi ? escapeHtml(u.pesanan_resi) : 'Manual (' + escapeHtml(u.sumber || '-') + ')'} • ${tanggal(u.created_at)}</div>
           ${u.komentar ? `<p class="mt-1">${escapeHtml(u.komentar)}</p>` : ''}
         </div>
         <button onclick="hapusUlasan(${u.id})" class="text-sm text-red-600 hover:underline shrink-0">Hapus</button>
       </div>`).join('');
+  }
+
+  // Form tambah ulasan manual (mis. disalin dari marketplace)
+  async function bukaFormUlasan() {
+    if (!produkData.length) await muatProduk();
+    document.getElementById('uProduk').innerHTML = produkData.map((p) => `<option value="${p.id}">${escapeHtml(p.nama)}</option>`).join('');
+    document.getElementById('uNama').value = '';
+    document.getElementById('uRating').value = '5';
+    document.getElementById('uKomentar').value = '';
+    document.getElementById('uTanggal').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('modalUlasan').classList.remove('hidden');
+  }
+
+  async function simpanUlasanManual() {
+    const nama = document.getElementById('uNama').value.trim();
+    const tanggal = document.getElementById('uTanggal').value;
+    if (!nama) { tampilkanToast('Nama pembeli wajib diisi.'); return; }
+    const { error } = await sb.from('ulasan').insert({
+      produk_id: Number(document.getElementById('uProduk').value),
+      nama,
+      rating: Number(document.getElementById('uRating').value),
+      komentar: document.getElementById('uKomentar').value.trim(),
+      sumber: document.getElementById('uSumber').value,
+      created_at: tanggal ? new Date(tanggal + 'T12:00:00+07:00').toISOString() : undefined
+    });
+    if (error) { console.error(error); tampilkanToast('Gagal menyimpan ulasan.'); return; }
+    tutupModal('modalUlasan');
+    tampilkanToast('Ulasan ditambahkan.');
+    muatUlasan();
   }
 
   async function hapusUlasan(id) {
@@ -524,6 +713,260 @@
     if (error) { console.error(error); tampilkanToast('Gagal menghapus.'); return; }
     tampilkanToast('Ulasan dihapus.');
     muatUlasan();
+  }
+
+  /* =====================================================================
+     VOUCHER
+     ===================================================================== */
+  const NAMA_TIPE = { nominal: 'Potongan Rupiah', persen: 'Diskon Persen', ongkir: 'Gratis Ongkir' };
+
+  async function muatVoucher() {
+    const wadah = document.getElementById('daftarVoucher');
+    wadah.innerHTML = '<p class="text-slate-400">Memuat…</p>';
+    const { data, error } = await sb.from('voucher').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); wadah.innerHTML = '<p class="text-red-500">Gagal memuat voucher.</p>'; return; }
+    voucherData = data || [];
+    if (!voucherData.length) { wadah.innerHTML = '<p class="text-slate-400">Belum ada voucher.</p>'; return; }
+    const hariIni = new Date().toISOString().slice(0, 10);
+    wadah.innerHTML = voucherData.map((v) => {
+      const nilai = v.tipe === 'nominal' ? rupiah(v.nilai)
+        : v.tipe === 'persen' ? `${v.nilai}%${v.maks_potongan ? ' (maks ' + rupiah(v.maks_potongan) + ')' : ''}`
+        : `ongkir${v.maks_potongan ? ' s/d ' + rupiah(v.maks_potongan) : ' penuh'}`;
+      const habis = v.kuota != null && v.terpakai >= v.kuota;
+      const lewat = v.berlaku_sampai && v.berlaku_sampai < hariIni;
+      const status = !v.aktif ? 'Nonaktif' : habis ? 'Kuota habis' : lewat ? 'Kedaluwarsa' : 'Aktif';
+      return `
+        <button onclick="bukaFormVoucher(${v.id})" class="w-full text-left bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap justify-between gap-3 hover:border-emerald-400">
+          <div>
+            <div class="font-mono font-bold text-lg">${escapeHtml(v.kode)}</div>
+            <div class="text-sm text-slate-600">${NAMA_TIPE[v.tipe]}: ${nilai}${v.min_belanja ? ' • min. ' + rupiah(v.min_belanja) : ''}${v.khusus_non_cod ? ' • khusus non-COD' : ''}</div>
+          </div>
+          <div class="text-right text-sm">
+            <span class="px-2 py-0.5 rounded-full text-xs ${status === 'Aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">${status}</span>
+            <div class="text-slate-500 mt-1">Terpakai ${v.terpakai}${v.kuota != null ? ' / ' + v.kuota : ''}</div>
+            ${v.berlaku_sampai ? `<div class="text-slate-500">s/d ${new Date(v.berlaku_sampai).toLocaleDateString('id-ID')}</div>` : ''}
+          </div>
+        </button>`;
+    }).join('');
+  }
+
+  // Sesuaikan label form dengan jenis voucher
+  function aturFormVoucher() {
+    const tipe = document.getElementById('vTipe').value;
+    document.getElementById('wadahNilai').classList.toggle('hidden', tipe === 'ongkir');
+    document.getElementById('wadahMaks').classList.toggle('hidden', tipe === 'nominal');
+    document.getElementById('labelNilai').textContent = tipe === 'persen' ? 'Diskon (%)' : 'Potongan (Rp)';
+  }
+
+  function bukaFormVoucher(id) {
+    idVoucherEdit = id;
+    const v = id ? voucherData.find((x) => x.id === id) : null;
+    document.getElementById('judulFormVoucher').textContent = v ? 'Edit Voucher' : 'Buat Voucher';
+    document.getElementById('vKode').value = v ? v.kode : '';
+    document.getElementById('vTipe').value = v ? v.tipe : 'nominal';
+    document.getElementById('vNilai').value = v ? v.nilai : '';
+    document.getElementById('vMaks').value = v && v.maks_potongan != null ? v.maks_potongan : '';
+    document.getElementById('vMin').value = v ? v.min_belanja : '';
+    document.getElementById('vKuota').value = v && v.kuota != null ? v.kuota : '';
+    document.getElementById('vSampai').value = v && v.berlaku_sampai ? v.berlaku_sampai : '';
+    document.getElementById('vNonCod').checked = v ? v.khusus_non_cod : false;
+    document.getElementById('vAktif').checked = v ? v.aktif : true;
+    document.getElementById('btnHapusVoucher').classList.toggle('hidden', !v);
+    aturFormVoucher();
+    document.getElementById('modalVoucher').classList.remove('hidden');
+  }
+
+  async function simpanVoucher() {
+    const angka = (id) => { const s = document.getElementById(id).value.trim(); return s === '' ? null : parseInt(s, 10); };
+    const tipe = document.getElementById('vTipe').value;
+    const data = {
+      kode: document.getElementById('vKode').value.trim().toUpperCase().replace(/\s+/g, ''),
+      tipe,
+      nilai: tipe === 'ongkir' ? 0 : (angka('vNilai') || 0),
+      maks_potongan: tipe === 'nominal' ? null : angka('vMaks'),
+      min_belanja: angka('vMin') || 0,
+      kuota: angka('vKuota'),
+      berlaku_sampai: document.getElementById('vSampai').value || null,
+      khusus_non_cod: document.getElementById('vNonCod').checked,
+      aktif: document.getElementById('vAktif').checked
+    };
+    if (!data.kode) { tampilkanToast('Kode voucher wajib diisi.'); return; }
+    if (tipe !== 'ongkir' && !data.nilai) { tampilkanToast('Isi nilai potongan.'); return; }
+    if (tipe === 'persen' && data.nilai > 100) { tampilkanToast('Diskon persen maksimal 100.'); return; }
+
+    const { error } = idVoucherEdit
+      ? await sb.from('voucher').update(data).eq('id', idVoucherEdit)
+      : await sb.from('voucher').insert(data);
+    if (error) {
+      console.error(error);
+      tampilkanToast(error.code === '23505' ? 'Kode voucher sudah dipakai, pilih kode lain.' : 'Gagal menyimpan voucher.');
+      return;
+    }
+    tutupModal('modalVoucher');
+    tampilkanToast('Voucher tersimpan.');
+    muatVoucher();
+  }
+
+  async function hapusVoucher() {
+    if (!idVoucherEdit || !confirm('Hapus voucher ini?')) return;
+    const { error } = await sb.from('voucher').delete().eq('id', idVoucherEdit);
+    if (error) { console.error(error); tampilkanToast('Gagal menghapus.'); return; }
+    tutupModal('modalVoucher');
+    tampilkanToast('Voucher dihapus.');
+    muatVoucher();
+  }
+
+  /* =====================================================================
+     PENGATURAN — pembayaran, gratis ongkir non-COD, kurir
+     ===================================================================== */
+  async function muatPengaturan() {
+    const { data, error } = await sb.from('pengaturan').select('data').eq('id', 1).maybeSingle();
+    if (error) { console.error(error); tampilkanToast('Gagal memuat pengaturan.'); return; }
+    pengaturanData = (data && data.data) || {};
+    // Lengkapi bagian yang kosong supaya form tidak error
+    pengaturanData.pembayaran = Object.assign({ cod: { aktif: true }, transfer: { aktif: false, rekening: [] }, qris: { aktif: false, gambar: '' } }, pengaturanData.pembayaran);
+    pengaturanData.pembayaran.transfer.rekening = pengaturanData.pembayaran.transfer.rekening || [];
+    pengaturanData.free_ongkir_non_cod = Object.assign({ aktif: false, maks: 0, min_belanja: 0 }, pengaturanData.free_ongkir_non_cod);
+    pengaturanData.kurir = pengaturanData.kurir || [];
+  }
+
+  const kotak = (judul, isi, ket = '') => `
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+      <h3 class="font-bold text-lg">${judul}</h3>
+      ${ket ? `<p class="text-sm text-slate-500 mb-3">${ket}</p>` : '<div class="mb-3"></div>'}
+      ${isi}
+    </div>`;
+  const centang = (id, cek, label) => `<label class="flex items-center gap-2 text-sm font-medium"><input id="${id}" type="checkbox" class="w-4 h-4" ${cek ? 'checked' : ''} /> ${label}</label>`;
+  const inputKelas = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm';
+
+  function renderPengaturan() {
+    const s = pengaturanData;
+    if (!s) return;
+    const b = s.pembayaran;
+
+    const rekening = b.transfer.rekening.map((r, i) => `
+      <div class="grid grid-cols-12 gap-2 items-center">
+        <input data-rek="${i}" data-f="bank" value="${escapeHtml(r.bank)}" placeholder="Bank" class="col-span-3 ${inputKelas}" />
+        <input data-rek="${i}" data-f="nomor" value="${escapeHtml(r.nomor)}" placeholder="No. rekening" class="col-span-4 font-mono ${inputKelas}" />
+        <input data-rek="${i}" data-f="atas_nama" value="${escapeHtml(r.atas_nama)}" placeholder="Atas nama" class="col-span-4 ${inputKelas}" />
+        <button type="button" onclick="ubahDaftar('rekening', ${i})" class="col-span-1 text-red-600 text-lg" title="Hapus">✕</button>
+      </div>`).join('');
+
+    const kurir = s.kurir.map((k, i) => `
+      <div class="grid grid-cols-12 gap-2 items-center py-2 border-t border-slate-100">
+        <label class="col-span-2 flex items-center gap-1 text-xs"><input data-kur="${i}" data-f="aktif" type="checkbox" class="w-4 h-4" ${k.aktif ? 'checked' : ''} /> Aktif</label>
+        <input data-kur="${i}" data-f="nama" value="${escapeHtml(k.nama)}" class="col-span-4 ${inputKelas}" />
+        <label class="col-span-2 flex items-center gap-1 text-xs"><input data-kur="${i}" data-f="cod" type="checkbox" class="w-4 h-4" ${k.cod ? 'checked' : ''} /> COD</label>
+        <input data-kur="${i}" data-f="selisih" type="number" step="500" value="${Number(k.selisih || 0)}" title="Selisih ongkir simulasi (Rp)" class="col-span-3 ${inputKelas}" />
+        <button type="button" onclick="ubahDaftar('kurir', ${i})" class="col-span-1 text-red-600 text-lg" title="Hapus">✕</button>
+      </div>`).join('');
+
+    document.getElementById('formPengaturan').innerHTML =
+      kotak('💳 Cara Pembayaran', `
+        <div class="space-y-5">
+          <div>${centang('pCod', b.cod.aktif, 'COD (bayar di tempat)')}</div>
+          <div class="space-y-2">
+            ${centang('pTransfer', b.transfer.aktif, 'Transfer Bank')}
+            <div class="space-y-2 pl-6">${rekening || '<p class="text-sm text-slate-400">Belum ada rekening.</p>'}
+              <button type="button" onclick="ubahDaftar('rekening')" class="text-sm font-semibold text-emerald-700">+ Tambah rekening</button>
+            </div>
+          </div>
+          <div class="space-y-2">
+            ${centang('pQris', b.qris.aktif, 'QRIS')}
+            <div class="pl-6 flex items-center gap-4">
+              ${b.qris.gambar ? `<img src="${escapeHtml(b.qris.gambar)}" alt="QRIS" class="w-28 h-28 object-contain border rounded-lg bg-white" />` : '<span class="text-sm text-slate-400">Belum ada gambar QRIS.</span>'}
+              <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-sm font-medium px-4 py-2 rounded-xl">
+                📷 ${b.qris.gambar ? 'Ganti' : 'Upload'} gambar QRIS
+                <input type="file" accept="image/*" class="hidden" onchange="uploadQris(this.files[0])" />
+              </label>
+            </div>
+          </div>
+        </div>`, 'Pilih cara bayar yang tampil di halaman checkout.') +
+      kotak('🚚 Gratis Ongkir untuk Transfer / QRIS', `
+        <div class="space-y-3">
+          ${centang('pFoAktif', s.free_ongkir_non_cod.aktif, 'Aktifkan gratis ongkir otomatis untuk pembayaran non-COD')}
+          <div class="grid grid-cols-2 gap-3 pl-6">
+            <div><label class="block text-xs font-medium mb-1">Maks. potongan ongkir (Rp)</label>
+              <input id="pFoMaks" type="number" min="0" step="1000" value="${Number(s.free_ongkir_non_cod.maks || 0)}" class="${inputKelas}" />
+              <p class="text-xs text-slate-400 mt-1">0 = ongkir gratis penuh</p></div>
+            <div><label class="block text-xs font-medium mb-1">Min. belanja (Rp)</label>
+              <input id="pFoMin" type="number" min="0" step="1000" value="${Number(s.free_ongkir_non_cod.min_belanja || 0)}" class="${inputKelas}" />
+              <p class="text-xs text-slate-400 mt-1">0 = tanpa minimal</p></div>
+          </div>
+        </div>`, 'Ingat: ongkir yang digratiskan tetap kamu yang bayar ke ekspedisi.') +
+      kotak('📦 Kurir', `
+        <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 font-medium pb-1">
+          <span class="col-span-2"></span><span class="col-span-4">Nama kurir</span><span class="col-span-2">Layanan</span><span class="col-span-3">Selisih ongkir (Rp)</span>
+        </div>
+        ${kurir}
+        <button type="button" onclick="ubahDaftar('kurir')" class="mt-2 text-sm font-semibold text-emerald-700">+ Tambah kurir</button>`,
+        'Centang COD hanya untuk kurir yang benar-benar melayani COD. "Selisih ongkir" dipakai untuk simulasi ongkir sampai KiriminAja tersambung.');
+  }
+
+  // Baca isi form pengaturan ke pengaturanData (dipanggil sebelum simpan / ubah daftar)
+  function bacaFormPengaturan() {
+    const s = pengaturanData;
+    const cek = (id) => document.getElementById(id).checked;
+    s.pembayaran.cod.aktif = cek('pCod');
+    s.pembayaran.transfer.aktif = cek('pTransfer');
+    s.pembayaran.qris.aktif = cek('pQris');
+    document.querySelectorAll('[data-rek]').forEach((el) => { s.pembayaran.transfer.rekening[el.dataset.rek][el.dataset.f] = el.value.trim(); });
+    s.free_ongkir_non_cod.aktif = cek('pFoAktif');
+    s.free_ongkir_non_cod.maks = parseInt(document.getElementById('pFoMaks').value, 10) || 0;
+    s.free_ongkir_non_cod.min_belanja = parseInt(document.getElementById('pFoMin').value, 10) || 0;
+    document.querySelectorAll('[data-kur]').forEach((el) => {
+      const k = s.kurir[el.dataset.kur];
+      if (el.type === 'checkbox') k[el.dataset.f] = el.checked;
+      else if (el.dataset.f === 'selisih') k.selisih = parseInt(el.value, 10) || 0;
+      else k[el.dataset.f] = el.value.trim();
+    });
+  }
+
+  // Tambah (tanpa index) atau hapus (dengan index) baris rekening / kurir
+  function ubahDaftar(jenis, idxHapus) {
+    bacaFormPengaturan();
+    const daftar = jenis === 'rekening' ? pengaturanData.pembayaran.transfer.rekening : pengaturanData.kurir;
+    if (idxHapus === undefined) daftar.push(jenis === 'rekening' ? { bank: '', nomor: '', atas_nama: '' } : { nama: '', aktif: true, cod: false, selisih: 0 });
+    else daftar.splice(idxHapus, 1);
+    renderPengaturan();
+  }
+
+  async function uploadQris(file) {
+    if (!file) return;
+    bacaFormPengaturan();
+    tampilkanToast('Mengunggah QRIS…');
+    const blob = await kecilkanFoto(file, 1000);
+    const jalur = `qris/${Date.now()}.jpg`;
+    const { error } = await sb.storage.from(BUCKET_FOTO).upload(jalur, blob, { contentType: 'image/jpeg' });
+    if (error) { console.error(error); tampilkanToast('Gagal upload: ' + error.message); return; }
+    pengaturanData.pembayaran.qris.gambar = sb.storage.from(BUCKET_FOTO).getPublicUrl(jalur).data.publicUrl;
+    renderPengaturan();
+    tampilkanToast('QRIS terunggah. Jangan lupa klik Simpan Pengaturan.');
+  }
+
+  async function simpanPengaturan() {
+    bacaFormPengaturan();
+    const s = pengaturanData;
+    const b = s.pembayaran;
+    // Pemeriksaan sederhana supaya pembeli tidak mendapat info bayar yang kosong
+    if (!b.cod.aktif && !b.transfer.aktif && !b.qris.aktif) { tampilkanToast('Minimal satu cara pembayaran harus aktif.'); return; }
+    b.transfer.rekening = b.transfer.rekening.filter((r) => r.bank || r.nomor || r.atas_nama);
+    if (b.transfer.aktif && !b.transfer.rekening.some((r) => r.bank && r.nomor && r.atas_nama)) { tampilkanToast('Isi minimal satu rekening lengkap untuk Transfer.'); return; }
+    if (b.transfer.rekening.some((r) => /^0+$/.test(r.nomor))) { tampilkanToast('Nomor rekening masih contoh (000…). Ganti dengan rekening asli.'); return; }
+    if (b.qris.aktif && !b.qris.gambar) { tampilkanToast('Upload gambar QRIS dulu sebelum mengaktifkan QRIS.'); return; }
+    s.kurir = s.kurir.filter((k) => k.nama);
+    if (!s.kurir.some((k) => k.aktif)) { tampilkanToast('Minimal satu kurir harus aktif.'); return; }
+    if (b.cod.aktif && !s.kurir.some((k) => k.aktif && k.cod)) { tampilkanToast('COD aktif, tapi belum ada kurir aktif yang bisa COD.'); return; }
+
+    const tombol = document.getElementById('btnSimpanPengaturan');
+    tombol.disabled = true;
+    tombol.textContent = 'Menyimpan…';
+    const { error } = await sb.from('pengaturan').update({ data: s, updated_at: new Date().toISOString() }).eq('id', 1);
+    tombol.disabled = false;
+    tombol.textContent = 'Simpan Pengaturan';
+    if (error) { console.error(error); tampilkanToast('Gagal menyimpan pengaturan.'); return; }
+    renderPengaturan();
+    tampilkanToast('Pengaturan tersimpan. Langsung berlaku di toko.');
   }
 
   /* =====================================================================
