@@ -445,59 +445,64 @@
   function kirimUpdateWA(id) {
     const p = pesananData.find((x) => x.id === id);
     if (!p) return;
-    const sapaan = `Halo kak ${p.nama} 👋`;
+    // Tanpa emoji: emoji di link WhatsApp sering rusak jadi "�" di WhatsApp Web/desktop
+    const sapaan = `Halo Kak ${p.nama},`;
+    const penutup = ['', 'Terima kasih,', `*${CFG.NAMA_TOKO}*`];
     const cod = p.metode_bayar === 'COD' || !p.metode_bayar;
     const produk = `${p.produk_nama} x${p.jumlah || 1}`;
+    const caraLacak = [`Lacak paket: ${linkToko()}`, '(menu Lacak Pesanan, masukkan no. pesanan & 4 angka terakhir no. HP)'];
     let isi;
     if (p.status === 'Menunggu Bayar') {
       const bayar = (pengaturanData && pengaturanData.pembayaran) || {};
       const infoBayar = p.metode_bayar === 'Transfer'
-        ? (bayar.transfer?.rekening || []).map((r) => `${r.bank} ${r.nomor} a.n. ${r.atas_nama}`)
-        : ['Scan QRIS yang tampil di website saat checkout.'];
+        ? (bayar.transfer?.rekening || []).map((r) => `- ${r.bank} ${r.nomor} a.n. ${r.atas_nama}`)
+        : ['- Scan QRIS yang tampil di website saat checkout'];
       isi = [
-        sapaan, '',
-        `Terima kasih sudah order di ${CFG.NAMA_TOKO} 🙏`, '',
+        sapaan, '', '*MENUNGGU PEMBAYARAN*', '',
         `No. Pesanan : ${p.resi}`,
         `Produk      : ${produk}`,
-        `*Total bayar : ${rupiah(p.total)}*`, '',
+        `Total bayar : *${rupiah(p.total)}*`, '',
         `Silakan lakukan pembayaran via ${NAMA_METODE[p.metode_bayar]}:`,
         ...infoBayar, '',
-        'Setelah bayar, mohon kirim bukti transfer di chat ini ya kak. Pesanan langsung kami proses.'
+        'Setelah bayar, mohon kirim bukti transfer di chat ini. Pesanan langsung kami proses.',
+        ...penutup
       ];
     } else if (p.status === 'Dikemas') {
       isi = [
-        sapaan, '',
-        cod ? `Pesanan kakak di ${CFG.NAMA_TOKO} sudah kami terima dan sedang dikemas 📦`
-            : `Pembayaran sudah kami terima ✅ Pesanan kakak sedang dikemas 📦`, '',
+        sapaan, '', cod ? '*PESANAN DITERIMA*' : '*PEMBAYARAN DITERIMA*', '',
+        cod ? 'Pesanan Kakak sudah kami terima dan sedang dikemas.' : 'Pembayaran sudah kami terima. Pesanan Kakak sedang dikemas.', '',
         `No. Pesanan : ${p.resi}`,
         `Produk      : ${produk}`,
         `Kurir       : ${p.kurir}${cod ? ' (COD)' : ''}`,
         cod ? `Total COD   : ${rupiah(p.total)}` : null, '',
-        'Kami kabari lagi setelah paket dikirim ya kak. Terima kasih 🙏'
+        'Kami kabari lagi setelah paket dikirim.',
+        ...penutup
       ];
     } else if (p.status === 'Dikirim') {
       isi = [
-        sapaan, '',
-        `Paket kakak sudah dikirim 🚚`, '',
+        sapaan, '', '*PESANAN SUDAH DIKIRIM*', '',
         `No. Pesanan : ${p.resi}`,
         `Kurir       : ${p.kurir}`,
-        p.resi_kurir ? `No. Resi    : ${p.resi_kurir}` : null,
+        p.resi_kurir ? `No. Resi    : *${p.resi_kurir}*` : null,
         cod ? `Total COD   : ${rupiah(p.total)}` : null, '',
-        `Cek status paket di ${linkToko()} → Lacak Pesanan → masukkan no. pesanan & 4 angka terakhir no. HP kakak.`,
-        cod ? 'Mohon siapkan uang pas saat kurir datang ya kak 🙏' : 'Ditunggu paketnya ya kak 🙏'
+        ...caraLacak, '',
+        cod ? 'Mohon siapkan uang pas saat kurir datang.' : 'Ditunggu paketnya ya, Kak.',
+        ...penutup
       ];
     } else if (p.status === 'Dibatalkan') {
       isi = [
-        sapaan, '',
-        `Pesanan ${p.resi} (${produk}) kami batalkan.`,
-        'Kalau ada pertanyaan atau mau order ulang, silakan balas chat ini ya kak 🙏'
+        sapaan, '', '*PESANAN DIBATALKAN*', '',
+        `Pesanan ${p.resi} (${produk}) telah kami batalkan.`,
+        'Jika ada pertanyaan atau ingin order ulang, silakan balas chat ini.',
+        ...penutup
       ];
     } else {
       isi = [
-        sapaan, '',
-        `Paket kakak sudah sampai. Terima kasih sudah belanja di ${CFG.NAMA_TOKO} 🙏`, '',
-        `Kalau berkenan, bantu kami dengan memberi ulasan di ${linkToko()}`,
-        `→ Lacak Pesanan → masukkan no. pesanan ${p.resi} & 4 angka terakhir no. HP kakak`
+        sapaan, '', '*PESANAN SELESAI*', '',
+        `Paket Kakak sudah sampai. Terima kasih sudah berbelanja di ${CFG.NAMA_TOKO}.`, '',
+        'Jika berkenan, bantu kami dengan memberi ulasan:',
+        `${linkToko()} (menu Lacak Pesanan, masukkan no. pesanan ${p.resi} & 4 angka terakhir no. HP)`,
+        ...penutup
       ];
     }
     const teks = isi.filter((baris) => baris !== null).join('\n');

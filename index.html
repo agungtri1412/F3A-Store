@@ -892,21 +892,22 @@
       };
     }
 
+    // Tanpa emoji: emoji di link WhatsApp sering rusak jadi "�" di WhatsApp Web/desktop
     const teks = [
-      `Halo ${CFG.NAMA_TOKO}, saya mau pesan:`, '',
-      `🔖 No. Pesanan : ${hasil.resi}`,
-      `🛍️ Produk : ${hasil.produk_nama} x${hasil.jumlah}`,
-      `👤 Nama   : ${form.nama}`,
-      `📱 No HP  : ${hasil.no_hp}`,
-      `🏠 Alamat : ${form.alamat}, ${form.kota}`,
-      `🚚 Kurir  : ${keranjang.kurir}`,
-      `💳 Bayar  : ${NAMA_METODE[hasil.metode_bayar]}`, '',
-      `Subtotal : ${rupiah(hasil.subtotal)}`,
-      hasil.diskon ? `Diskon (${hasil.kode_voucher}) : −${rupiah(hasil.diskon)}` : null,
-      `Ongkir   : ${rupiah(hasil.ongkir)}`,
-      hasil.potongan_ongkir ? `Gratis ongkir : −${rupiah(hasil.potongan_ongkir)}` : null,
+      `*PESANAN BARU - ${CFG.NAMA_TOKO.toUpperCase()}*`, '',
+      `No. Pesanan : *${hasil.resi}*`,
+      `Produk      : ${hasil.produk_nama} x${hasil.jumlah}`,
+      `Nama        : ${form.nama}`,
+      `No. HP      : ${hasil.no_hp}`,
+      `Alamat      : ${form.alamat}, ${form.kota}`,
+      `Kurir       : ${keranjang.kurir}`,
+      `Pembayaran  : ${NAMA_METODE[hasil.metode_bayar]}`, '',
+      `Subtotal    : ${rupiah(hasil.subtotal)}`,
+      hasil.diskon ? `Diskon (${hasil.kode_voucher}) : -${rupiah(hasil.diskon)}` : null,
+      `Ongkir      : ${rupiah(hasil.ongkir)}`,
+      hasil.potongan_ongkir ? `Gratis ongkir : -${rupiah(hasil.potongan_ongkir)}` : null,
       `*Total ${hasil.metode_bayar === 'COD' ? 'Tagihan COD' : 'Transfer'} : ${rupiah(hasil.total)}*`, '',
-      hasil.metode_bayar === 'COD' ? 'Mohon diproses, terima kasih 🙏' : 'Saya akan kirim bukti pembayaran di chat ini 🙏'
+      hasil.metode_bayar === 'COD' ? 'Mohon segera diproses. Terima kasih.' : 'Bukti pembayaran akan saya kirim di chat ini. Terima kasih.'
     ].filter((b) => b !== null).join('\n');
     const urlWA = linkWa(teks);
 
