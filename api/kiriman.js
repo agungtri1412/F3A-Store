@@ -120,11 +120,23 @@ module.exports = async (req, res) => {
     // ---------- Jadwal pickup ----------
     if (b.aksi === 'jadwal') {
       const d = await panggilKA('/api/mitra/v2/schedules');
-      const mentah = d.schedules || d.data || d.datas || d.results || [];
-      const jadwal = (Array.isArray(mentah) ? mentah : []).map((x) => {
+      // Cari daftar jadwal di mana pun letaknya dalam respons (format KiriminAja bisa berbeda)
+      const cariArray = (o, dalam = 0) => {
+        if (Array.isArray(o)) return o;
+        if (!o || typeof o !== 'object' || dalam > 3) return null;
+        for (const k of ['schedules', 'schedule', 'data', 'datas', 'results', 'result']) {
+          const hasil = cariArray(o[k], dalam + 1);
+          if (hasil) return hasil;
+        }
+        return null;
+      };
+      const mentah = cariArray(d) || [];
+      const jadwal = mentah.map((x) => {
         if (typeof x === 'string') return { nilai: x, label: x };
-        const nilai = x.clock || x.schedule || x.time || x.value || x.datetime || x.date;
-        return { nilai, label: x.label || x.text || nilai, lewat: !!x.expired };
+        const nilai = x.clock || x.schedule || x.datetime || x.value || x.start || x.pickup_time
+          || (x.date && x.time ? `${x.date} ${x.time}${String(x.time).length === 5 ? ':00' : ''}` : (x.time || x.date));
+        const label = x.label || x.text || (x.until ? `${nilai} s/d ${x.until}` : nilai);
+        return { nilai, label, lewat: x.expired === true || x.expired === 1 || x.libur === true };
       }).filter((x) => x.nilai && !x.lewat);
       return res.status(200).json({ ok: true, jadwal, contoh_mentah: jadwal.length ? undefined : d });
     }
@@ -181,7 +193,11 @@ module.exports = async (req, res) => {
           cod: p.metode_bayar === 'COD' ? p.total : 0,
           package_type_id: PACKAGE_TYPE_ID,
           item_name: `${p.produk_nama} x${jumlah}`.slice(0, 255),
-          items: [{ name: p.produk_nama, price: p.harga, qty: jumlah, weight: prod.berat_gram || 250 }],
+          // KiriminAja juga mewajibkan ukuran per barang (width/length/height)
+          items: [{
+            name: p.produk_nama, price: p.harga, qty: jumlah, weight: prod.berat_gram || 250,
+            length: prod.panjang_cm || 10, width: prod.lebar_cm || 10, height: prod.tinggi_cm || 10
+          }],
           note: `Order ${p.resi}`.slice(0, 50)
         }]
       };
