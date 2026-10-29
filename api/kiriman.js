@@ -18,13 +18,13 @@ const PACKAGE_TYPE_ID = 7;   // sesuai dokumentasi KiriminAja
 const baseKA = () => ((process.env.KIRIMINAJA_ENV || 'sandbox').toLowerCase() === 'production'
   ? 'https://client.kiriminaja.com' : 'https://tdev.kiriminaja.com');
 
-async function panggilKA(jalur, body, query) {
+async function panggilKA(jalur, body, query, metode = 'POST') {
   const url = new URL(baseKA() + jalur);
   if (query) Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, v));
   const r = await fetch(url, {
-    method: 'POST',
+    method: metode,
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + process.env.KIRIMINAJA_API_KEY },
-    body: JSON.stringify(body || {})
+    body: metode === 'GET' ? undefined : JSON.stringify(body || {})
   });
   const teks = await r.text();
   let data;
@@ -141,6 +141,14 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, jadwal, contoh_mentah: jadwal.length ? undefined : d });
     }
 
+    // ---------- Saldo KA Credit ----------
+    if (b.aksi === 'saldo') {
+      const d = await panggilKA('/api/mitra/v6.2/credit/balance', null, null, 'GET');
+      const cari = [d.results, d.result, d.data, d].find((x) => x && x.balance !== undefined);
+      if (!cari) return res.status(200).json({ ok: false, pesan: pesanKA(d) });
+      return res.status(200).json({ ok: true, saldo: Number(cari.balance) });
+    }
+
     const p = await ambilPesanan(b.id, token);
 
     // ---------- Request pickup (buat paket di KiriminAja) ----------
@@ -202,14 +210,41 @@ module.exports = async (req, res) => {
         }]
       };
 
-      const d = await panggilKA('/api/mitra/v6.1/request_pickup', payload);
+      // Cara bayar ongkir non-COD (endpoint resmi terbaru v6.2, sama seperti plugin resmi KiriminAja):
+      //   'credit' → potong saldo KA Credit (PIN opsional; kalau akun tidak pakai PIN, pin TIDAK dikirim)
+      //   lainnya  → 'cash' (bayar lewat QRIS setelah request)
+      // Pesanan COD tidak mengirim payment_method.
+      const pakaiCredit = p.metode_bayar !== 'COD' && b.bayar_ongkir === 'credit';
+      const kirim = { ...payload };
+      if (p.metode_bayar !== 'COD') kirim.payment_method = pakaiCredit ? 'credit' : 'cash';
+      if (pakaiCredit) {
+        const s = await panggilKA('/api/mitra/v6.2/credit/balance', null, null, 'GET');
+        const ds = [s.results, s.result, s.data, s].find((x) => x && x.balance !== undefined);
+        if (ds && Number(ds.balance) < Number(p.ongkir || 0)) {
+          return res.status(200).json({ ok: false, pesan: `Saldo KA Credit Rp${Number(ds.balance).toLocaleString('id-ID')} tidak cukup untuk ongkir Rp${Number(p.ongkir).toLocaleString('id-ID')}. Top up dulu.` });
+        }
+        const pin = String(b.pin || '').trim();
+        if (pin) {
+          if (!/^\d{6}$/.test(pin)) return res.status(200).json({ ok: false, pesan: 'PIN KA Credit harus 6 angka (kosongkan kalau akun tidak memakai PIN).' });
+          const v = await panggilKA('/api/mitra/v6.2/pin/validate', { pin });
+          const hasilPin = v.data || v.results || {};
+          if (v.status !== true || hasilPin.valid === false) {
+            const sisa = hasilPin.max_attempt ? ` (percobaan ${hasilPin.attempt}/${hasilPin.max_attempt}${hasilPin.lock_until ? ', terkunci sampai ' + hasilPin.lock_until : ''})` : '';
+            return res.status(200).json({ ok: false, pesan: (v.text || 'PIN KA Credit salah.') + sisa });
+          }
+          kirim.pin = pin;
+        }
+      }
+      const d = await panggilKA('/api/mitra/v6.2/request_pickup', kirim);
       if (d.status === false || d.status === undefined) {
-        return res.status(200).json({ ok: false, pesan: pesanKA(d), detail: d.errors || d.details || null });
+        const kode = d.results && d.results.error;
+        const arti = { PIN_INVALID: 'PIN KA Credit salah.', PIN_MAX_ATTEMPT_REACHED: 'PIN salah terlalu sering, akun terkunci sementara.', BALANCE_NOT_ENOUGH: 'Saldo KA Credit tidak cukup. Top up dulu.' };
+        return res.status(200).json({ ok: false, pesan: arti[kode] || pesanKA(d), detail: d.errors || d.details || d.results || null });
       }
       const ubah = {
         ka_order_id: orderId,
         ka_pickup_number: d.pickup_number || d.payment_id || null,
-        ka_payment_status: p.metode_bayar === 'COD' ? 'cod' : (d.payment_status || null),
+        ka_payment_status: p.metode_bayar === 'COD' ? 'cod' : (pakaiCredit && d.payment_status !== 'unpaid' ? 'paid' : (d.payment_status || null)),
         ka_qr: d.qr_url || d.qr_content || null,
         ka_status: 'Pickup diminta',
         ka_jadwal: b.jadwal,
