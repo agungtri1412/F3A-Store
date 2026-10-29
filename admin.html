@@ -535,8 +535,28 @@
       </div>
       <div class="text-sm font-semibold mb-2">Jadwal jemput</div>
       <div class="space-y-2 max-h-56 overflow-y-auto">${pilihan}</div>
-      ${p.metode_bayar !== 'COD' ? '<p class="text-xs text-amber-700 mt-3">Pesanan non-COD: setelah request, ongkir mungkin perlu dibayar (QR akan muncul) sebelum kurir menjemput.</p>' : ''}
+      ${p.metode_bayar !== 'COD' ? `
+        <div class="text-sm font-semibold mt-4 mb-2">Bayar ongkir pakai</div>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50"><input type="radio" name="bayarOngkir" value="credit" checked onchange="gantiBayarOngkir()" /> Saldo KA Credit <span id="infoSaldo" class="text-xs text-slate-500 ml-auto">cek saldo…</span></label>
+          <label class="flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50"><input type="radio" name="bayarOngkir" value="qris" onchange="gantiBayarOngkir()" /> QRIS (scan setelah request)</label>
+        </div>
+        <div id="kotakPin" class="mt-2">
+          <input id="pinKA" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="PIN KA Credit 6 angka (kosongkan kalau tidak pakai PIN)" class="w-full rounded-lg border px-3 py-2 tracking-widest" />
+          <p class="text-xs text-slate-500 mt-1">PIN tidak disimpan, hanya dipakai untuk request ini.</p>
+        </div>` : ''}
       <button id="btnKirimPickup" onclick="kirimPickup(${id})" class="mt-4 w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">Kirim Request Pickup</button>`);
+    if (p.metode_bayar !== 'COD') {
+      apiKiriman('saldo').then((s) => {
+        const el = document.getElementById('infoSaldo');
+        if (el) el.textContent = s.ok ? 'Saldo ' + rupiah(s.saldo) : 'saldo tidak terbaca';
+      });
+    }
+  }
+
+  function gantiBayarOngkir() {
+    const pilih = document.querySelector('input[name="bayarOngkir"]:checked');
+    document.getElementById('kotakPin').classList.toggle('hidden', !pilih || pilih.value !== 'credit');
   }
 
   async function kirimPickup(id) {
@@ -544,9 +564,15 @@
     const manual = document.getElementById('jadwalManual');
     const jadwal = radio ? radio.value : (manual && manual.value ? manual.value.replace('T', ' ') + ':00' : '');
     if (!jadwal) { tampilkanToast('Pilih jadwal pickup.'); return; }
+    const caraBayar = document.querySelector('input[name="bayarOngkir"]:checked');
+    const bayar_ongkir = caraBayar ? caraBayar.value : undefined;
+    const pinEl = document.getElementById('pinKA');
+    const pin = pinEl ? pinEl.value.trim() : '';
+    if (bayar_ongkir === 'credit' && pin && !/^\d{6}$/.test(pin)) { tampilkanToast('PIN KA Credit harus 6 angka (atau kosongkan).'); return; }
     const tombol = document.getElementById('btnKirimPickup');
     tombol.disabled = true; tombol.textContent = 'Mengirim ke KiriminAja…';
-    const r = await apiKiriman('pickup', { id, jadwal });
+    const r = await apiKiriman('pickup', { id, jadwal, bayar_ongkir, pin: bayar_ongkir === 'credit' && pin ? pin : undefined });
+    if (pinEl) pinEl.value = '';
     if (!r.ok) {
       tombol.disabled = false; tombol.textContent = 'Kirim Request Pickup';
       tampilkanToast(r.pesan || 'Gagal request pickup.');
