@@ -524,7 +524,9 @@
     const pilihan = r.ok && r.jadwal && r.jadwal.length
       ? r.jadwal.map((j, i) => `<label class="flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50"><input type="radio" name="jadwalKA" value="${escapeHtml(j.nilai)}" ${i === 0 ? 'checked' : ''} /> ${escapeHtml(j.label)}</label>`).join('')
       : `<p class="text-sm text-amber-700">${escapeHtml(r.pesan || 'Jadwal tidak tersedia dari KiriminAja.')} Isi manual:</p>
-         <input id="jadwalManual" type="datetime-local" class="w-full rounded-lg border px-3 py-2" />`;
+         <input id="jadwalManual" type="datetime-local" class="w-full rounded-lg border px-3 py-2" />
+         ${r.contoh_mentah ? `<details class="mt-2 text-xs text-slate-500"><summary class="cursor-pointer">Lihat respons jadwal dari KiriminAja</summary>
+           <pre class="mt-1 p-2 bg-slate-100 rounded whitespace-pre-wrap break-all max-h-40 overflow-y-auto">${escapeHtml(JSON.stringify(r.contoh_mentah, null, 1))}</pre></details>` : ''}`;
     tampilModalInfo('Request Pickup', `
       <div class="text-sm space-y-1 mb-4">
         <div><b>${escapeHtml(p.resi)}</b> · ${escapeHtml(p.produk_nama)} x${p.jumlah || 1}</div>
@@ -549,6 +551,10 @@
       tombol.disabled = false; tombol.textContent = 'Kirim Request Pickup';
       tampilkanToast(r.pesan || 'Gagal request pickup.');
       if (r.detail) console.warn('Detail dari KiriminAja:', r.detail);
+      // Tampilkan detail error di jendela supaya mudah di-screenshot
+      const kotakErr = document.getElementById('errPickup') || Object.assign(document.createElement('div'), { id: 'errPickup', className: 'mt-3 text-xs text-red-700 bg-red-50 rounded-lg p-2 whitespace-pre-wrap break-all' });
+      kotakErr.textContent = 'Error KiriminAja: ' + (r.pesan || '') + (r.detail ? '\n' + JSON.stringify(r.detail) : '');
+      tombol.after(kotakErr);
       return;
     }
     tutupModal('modalInfo');
