@@ -228,6 +228,7 @@ module.exports = async (req, res) => {
           if (!/^\d{6}$/.test(pin)) return res.status(200).json({ ok: false, pesan: 'PIN KA Credit harus 6 angka (kosongkan kalau akun tidak memakai PIN).' });
           const v = await panggilKA('/api/mitra/v6.2/pin/validate', { pin });
           const hasilPin = v.data || v.results || {};
+          if (/endpoint target/i.test(pesanKA(v))) return res.status(200).json({ ok: false, pesan: 'Endpoint cek PIN tidak tersedia di server KiriminAja ini. Coba kosongkan PIN.' });
           if (v.status !== true || hasilPin.valid === false) {
             const sisa = hasilPin.max_attempt ? ` (percobaan ${hasilPin.attempt}/${hasilPin.max_attempt}${hasilPin.lock_until ? ', terkunci sampai ' + hasilPin.lock_until : ''})` : '';
             return res.status(200).json({ ok: false, pesan: (v.text || 'PIN KA Credit salah.') + sisa });
@@ -235,11 +236,17 @@ module.exports = async (req, res) => {
           kirim.pin = pin;
         }
       }
-      const d = await panggilKA('/api/mitra/v6.2/request_pickup', kirim);
+      // Sandbox kadang belum punya v6.2 ("Unable to find your endpoint target") → coba v6.1
+      let jalurPickup = '/api/mitra/v6.2/request_pickup';
+      let d = await panggilKA(jalurPickup, kirim);
+      if (d.status !== true && /endpoint target/i.test(pesanKA(d))) {
+        jalurPickup = '/api/mitra/v6.1/request_pickup';
+        d = await panggilKA(jalurPickup, kirim);
+      }
       if (d.status === false || d.status === undefined) {
         const kode = d.results && d.results.error;
         const arti = { PIN_INVALID: 'PIN KA Credit salah.', PIN_MAX_ATTEMPT_REACHED: 'PIN salah terlalu sering, akun terkunci sementara.', BALANCE_NOT_ENOUGH: 'Saldo KA Credit tidak cukup. Top up dulu.' };
-        return res.status(200).json({ ok: false, pesan: arti[kode] || pesanKA(d), detail: d.errors || d.details || d.results || null });
+        return res.status(200).json({ ok: false, pesan: (arti[kode] || pesanKA(d)) + ` [${jalurPickup.replace('/api/mitra/', '')}]`, detail: d.errors || d.details || d.results || null });
       }
       const ubah = {
         ka_order_id: orderId,
