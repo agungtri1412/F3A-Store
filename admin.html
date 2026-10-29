@@ -602,6 +602,8 @@
       ${riwayat.length ? `<ol class="border-l-2 border-slate-200 ml-1 space-y-3">${riwayat.map((h) => `
         <li class="pl-4"><div class="text-sm font-medium">${escapeHtml(h.status)}</div><div class="text-xs text-slate-500">${escapeHtml(h.waktu || '')}${h.penerima ? ' · Penerima: ' + escapeHtml(h.penerima) : ''}</div></li>`).join('')}</ol>`
         : '<p class="text-sm text-slate-500">Belum ada riwayat perjalanan.</p>'}
+      ${r.mentah ? `<details class="mt-4 text-xs text-slate-500"><summary class="cursor-pointer">Lihat respons tracking dari KiriminAja</summary>
+        <pre class="mt-1 p-2 bg-slate-100 rounded whitespace-pre-wrap break-all max-h-56 overflow-y-auto">${escapeHtml(JSON.stringify(r.mentah, null, 1))}</pre></details>` : ''}
       ${r.terkirim ? '<p class="text-xs text-emerald-700 mt-4">Paket sudah diterima, ubah status pesanan ke "Selesai" lalu kirim WA ke pembeli.</p>' : ''}`);
   }
 
