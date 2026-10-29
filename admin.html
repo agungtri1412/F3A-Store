@@ -592,7 +592,12 @@
   async function batalKA(id) {
     const alasan = prompt('Alasan pembatalan pengiriman:', 'Dibatalkan penjual');
     if (alasan === null) return;
-    const r = await apiKiriman('batal', { id, alasan });
+    let r = await apiKiriman('batal', { id, alasan });
+    if (!r.ok && r.perlu_reset) {
+      // Belum ada resi → tawarkan reset data pickup di website
+      if (!confirm('Resi belum terbit, jadi pembatalan harus dilakukan di dashboard / halaman Simulation KiriminAja.\n\nKalau order ini SUDAH dibatalkan di sana (atau memang tidak dilanjutkan), klik OK untuk menghapus data pickup di website supaya bisa request pickup ulang.')) return;
+      r = await apiKiriman('batal', { id, alasan, paksa: true });
+    }
     if (!r.ok) { tampilkanToast(r.pesan || 'Gagal membatalkan.'); return; }
     perbaruiLokal(id, r);
     tampilkanToast(r.pesan || 'Pengiriman dibatalkan.');
