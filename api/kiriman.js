@@ -252,7 +252,17 @@ module.exports = async (req, res) => {
     // ---------- Batalkan pengiriman ----------
     if (b.aksi === 'batal') {
       if (!p.ka_order_id) return res.status(200).json({ ok: false, pesan: 'Belum ada pengiriman untuk dibatalkan.' });
-      if (!p.resi_kurir) return res.status(200).json({ ok: false, pesan: 'Resi belum terbit, pembatalan lewat API butuh nomor resi. Coba Lacak dulu, atau batalkan dari dashboard KiriminAja.' });
+      if (!p.resi_kurir) {
+        // Resi belum ada: pembatalan dilakukan di dashboard/simulasi KiriminAja, lalu data di website cukup direset
+        if (!b.paksa) return res.status(200).json({ ok: false, perlu_reset: true, pesan: 'Resi belum terbit, jadi tidak bisa dibatalkan lewat API.' });
+        const ubah = {
+          ka_status: `Pickup direset (${p.ka_order_id})`,
+          ka_order_id: null, ka_pickup_number: null, ka_payment_status: null, ka_qr: null, ka_jadwal: null,
+          ka_percobaan: (p.ka_percobaan || 0) + 1
+        };
+        await simpanPesanan(p.id, ubah, token);
+        return res.status(200).json({ ok: true, pesan: 'Data pickup di website direset. Pesanan bisa di-request pickup ulang.', ...ubah });
+      }
       const alasan = String(b.alasan || 'Dibatalkan penjual').slice(0, 100);
       const d = await panggilKA('/api/mitra/v3/cancel_shipment', {}, { awb: p.resi_kurir, reason: alasan });
       if (d.status === false || d.status === undefined) return res.status(200).json({ ok: false, pesan: pesanKA(d) });
