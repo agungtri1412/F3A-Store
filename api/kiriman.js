@@ -247,7 +247,7 @@ module.exports = async (req, res) => {
       if (d.status === false || d.status === undefined) {
         const kode = d.results && d.results.error;
         const arti = { PIN_INVALID: 'PIN KA Credit salah.', PIN_MAX_ATTEMPT_REACHED: 'PIN salah terlalu sering, akun terkunci sementara.', BALANCE_NOT_ENOUGH: 'Saldo KA Credit tidak cukup. Top up dulu.' };
-        return res.status(200).json({ ok: false, pesan: (arti[kode] || pesanKA(d)) + ` [${jalurPickup.replace('/api/mitra/', '')}]`, detail: d.errors || d.details || d.results || null });
+        return res.status(200).json({ ok: false, pesan: (arti[kode] || pesanKA(d)) + ` [${jalurPickup.replace('/api/mitra/', '')}]`, detail: { pin_ikut_dikirim: !!kirim.pin, cara_bayar: kirim.payment_method || 'cod', respons: d.errors || d.details || d.results || null } });
       }
       const ubah = {
         ka_order_id: orderId,
