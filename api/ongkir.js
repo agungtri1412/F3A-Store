@@ -10,7 +10,10 @@
 // Cara pakai (POST JSON):
 //   { "aksi": "cari",  "q": "bulak" }
 //      → daftar kecamatan [{ id, text }]
-//   { "aksi": "tarif", "asal_id": 6155, "tujuan_id": 6438, "berat": 250, "nilai": 85000, "kurir": ["jne","jnt"] }
+//   { "aksi": "kelurahan", "kecamatan_id": 6155 }
+//      → daftar kelurahan [{ id, nama }]
+//   { "aksi": "tarif", "asal_id": 6155, "tujuan_id": 6438, "berat": 250, "nilai": 85000,
+//     "panjang": 10, "lebar": 10, "tinggi": 10, "kurir": ["jne","jnt"] }
 //      → daftar layanan + ongkir. Setiap layanan diberi tanda tangan (sig) supaya
 //        database bisa memastikan ongkirnya asli dari sini, bukan diketik di browser.
 // =====================================================================
@@ -81,6 +84,20 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, data: daftar.slice(0, 15).map((d) => ({ id: d.id, text: d.text })) });
     }
 
+    // ---------- Daftar kelurahan dari satu kecamatan ----------
+    if (b.aksi === 'kelurahan') {
+      const id = parseInt(b.kecamatan_id, 10);
+      if (!id) return res.status(200).json({ ok: true, data: [] });
+      const { data } = await panggilKA('/api/mitra/kelurahan', { kecamatan_id: id });
+      const daftar = data.results || data.datas || data.data || [];
+      res.setHeader('Cache-Control', 's-maxage=86400');
+      return res.status(200).json({
+        ok: true,
+        data: (Array.isArray(daftar) ? daftar : []).map((d) => ({ id: d.id, nama: d.kelurahan_name || d.name || d.text }))
+          .sort((a, c) => String(a.nama).localeCompare(String(c.nama)))
+      });
+    }
+
     // ---------- Cek tarif ----------
     if (b.aksi === 'tarif') {
       if (!process.env.ONGKIR_RAHASIA) return res.status(500).json({ ok: false, pesan: 'ONGKIR_RAHASIA belum diatur di Vercel.' });
@@ -88,12 +105,14 @@ module.exports = async (req, res) => {
       const tujuan = parseInt(b.tujuan_id, 10);
       const berat = Math.max(1, Math.min(50000, parseInt(b.berat, 10) || 0));
       const nilai = Math.max(0, parseInt(b.nilai, 10) || 0);
+      const ukuran = (v) => Math.max(1, Math.min(300, parseInt(v, 10) || 1));   // cm
       const kurir = (Array.isArray(b.kurir) ? b.kurir : []).map((k) => String(k).toLowerCase()).filter((k) => KODE_KURIR_DIKENAL.includes(k));
       if (!asal || !tujuan) return res.status(400).json({ ok: false, pesan: 'Alamat asal/tujuan belum lengkap.' });
       if (!kurir.length) return res.status(400).json({ ok: false, pesan: 'Belum ada kurir aktif.' });
 
       const { http, data } = await panggilKA('/api/mitra/v6.1/shipping_price', {
-        origin: asal, destination: tujuan, weight: berat, item_value: nilai, insurance: 0, courier: kurir
+        origin: asal, destination: tujuan, weight: berat, item_value: nilai, insurance: 0, courier: kurir,
+        length: ukuran(b.panjang), width: ukuran(b.lebar), height: ukuran(b.tinggi)
       });
       if (http !== 200 || data.status === false) {
         return res.status(200).json({ ok: false, pesan: data.text || 'Gagal mengambil ongkir dari KiriminAja.' });
