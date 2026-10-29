@@ -228,8 +228,9 @@ module.exports = async (req, res) => {
           if (!/^\d{6}$/.test(pin)) return res.status(200).json({ ok: false, pesan: 'PIN KA Credit harus 6 angka (kosongkan kalau akun tidak memakai PIN).' });
           const v = await panggilKA('/api/mitra/v6.2/pin/validate', { pin });
           const hasilPin = v.data || v.results || {};
-          if (/endpoint target/i.test(pesanKA(v))) return res.status(200).json({ ok: false, pesan: 'Endpoint cek PIN tidak tersedia di server KiriminAja ini. Coba kosongkan PIN.' });
-          if (v.status !== true || hasilPin.valid === false) {
+          // Kalau endpoint cek PIN tidak ada (sandbox), lewati: PIN tetap diperiksa oleh request_pickup
+          const tanpaCek = /endpoint target/i.test(pesanKA(v));
+          if (!tanpaCek && (v.status !== true || hasilPin.valid === false)) {
             const sisa = hasilPin.max_attempt ? ` (percobaan ${hasilPin.attempt}/${hasilPin.max_attempt}${hasilPin.lock_until ? ', terkunci sampai ' + hasilPin.lock_until : ''})` : '';
             return res.status(200).json({ ok: false, pesan: (v.text || 'PIN KA Credit salah.') + sisa });
           }
