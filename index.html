@@ -261,6 +261,10 @@
                 <div id="saranKecamatan" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-ink/10 rounded-xl shadow-lg max-h-64 overflow-y-auto"></div>
                 <p class="text-xs text-ink/40 mt-1">Ketik minimal 3 huruf, lalu pilih dari daftar.</p>
               </div>
+              <div id="wadahKelurahan" class="hidden mt-4">
+                <label class="block text-sm font-medium mb-1" for="inKelurahan">Kelurahan / Desa</label>
+                <select id="inKelurahan" class="w-full rounded-xl border border-ink/20 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></select>
+              </div>
             </div>
           </div>
           <div class="bg-white rounded-2xl border border-ink/10 p-5">
@@ -383,7 +387,7 @@
   let detailAktif = null;
   let hasilLacak = {};
   // tujuan = kecamatan terpilih; layanan = pilihan kurir+ongkir; pilihan = layanan yang dipilih
-  const keranjang = { produk: null, jumlah: 1, metode: 'COD', tujuan: null, layanan: [], pilihan: null, statusKurir: '', voucher: null };
+  const keranjang = { produk: null, jumlah: 1, metode: 'COD', tujuan: null, kelurahan: null, layanan: [], pilihan: null, statusKurir: '', voucher: null };
 
   /* =====================================================================
      ALAT BANTU KECIL
@@ -708,7 +712,8 @@
     const q = document.getElementById('inKecamatan').value.trim();
     const saran = document.getElementById('saranKecamatan');
     if (keranjang.tujuan) {   // ketik ulang = pilihan lama dibatalkan
-      keranjang.tujuan = null; keranjang.layanan = []; keranjang.pilihan = null; keranjang.statusKurir = '';
+      keranjang.tujuan = null; keranjang.kelurahan = null; keranjang.layanan = []; keranjang.pilihan = null; keranjang.statusKurir = '';
+      document.getElementById('wadahKelurahan').classList.add('hidden');
       renderPilihanKurir(); perbaruiRingkasan();
     }
     clearTimeout(timerCari);
@@ -733,7 +738,26 @@
     keranjang.tujuan = hasilCariKec[i];
     document.getElementById('inKecamatan').value = keranjang.tujuan.text;
     document.getElementById('saranKecamatan').classList.add('hidden');
+    muatKelurahan();
     hitungOngkir();
+  }
+
+  // Daftar kelurahan dari kecamatan terpilih (wajib untuk pengiriman KiriminAja)
+  async function muatKelurahan() {
+    const wadah = document.getElementById('wadahKelurahan');
+    const sel = document.getElementById('inKelurahan');
+    keranjang.kelurahan = null;
+    wadah.classList.remove('hidden');
+    sel.innerHTML = '<option value="">Memuat kelurahan…</option>';
+    try {
+      const r = await panggilOngkir({ aksi: 'kelurahan', kecamatan_id: keranjang.tujuan.id });
+      const daftar = (r && r.data) || [];
+      if (!daftar.length) { wadah.classList.add('hidden'); return; }
+      sel.innerHTML = '<option value="">— Pilih kelurahan / desa —</option>' +
+        daftar.map((d) => `<option value="${d.id}">${escapeHtml(d.nama)}</option>`).join('');
+    } catch (e) {
+      sel.innerHTML = '<option value="">Gagal memuat — pilih ulang kecamatan</option>';
+    }
   }
 
   /* ---------- Pilihan kurir & ongkir ---------- */
@@ -791,7 +815,9 @@
       try {
         const r = await panggilOngkir({
           aksi: 'tarif', asal_id: pengaturan.asal.kecamatan_id, tujuan_id: keranjang.tujuan.id, berat,
-          nilai: keranjang.produk.harga * keranjang.jumlah, kurir: kurirAktif().map((k) => k.kode).filter(Boolean)
+          nilai: keranjang.produk.harga * keranjang.jumlah, kurir: kurirAktif().map((k) => k.kode).filter(Boolean),
+          panjang: keranjang.produk.panjang_cm || 10, lebar: keranjang.produk.lebar_cm || 10,
+          tinggi: (keranjang.produk.tinggi_cm || 10) * keranjang.jumlah
         });
         if (no !== nomorPermintaan) return;
         if (!r || !r.ok) throw new Error((r && r.pesan) || 'tidak ada jawaban');
@@ -905,13 +931,14 @@
       nama: document.getElementById('inNama').value.trim(),
       no_hp: normalisasiHp(document.getElementById('inHp').value),
       alamat: document.getElementById('inAlamat').value.trim(),
-      kota: keranjang.tujuan ? keranjang.tujuan.text : ''
+      kota: keranjang.tujuan ? (keranjang.kelurahan ? keranjang.kelurahan.nama + ', ' : '') + keranjang.tujuan.text : ''
     };
     if (!keranjang.produk) { tampilkanToast('Pilih produk dulu.'); return null; }
     if (!data.nama) { tampilkanToast('Nama wajib diisi.'); return null; }
     if (data.no_hp.length < 10) { tampilkanToast('Nomor WhatsApp belum valid.'); return null; }
     if (!data.alamat) { tampilkanToast('Alamat wajib diisi.'); return null; }
     if (!keranjang.tujuan) { tampilkanToast('Pilih kecamatan tujuan dari daftar.'); return null; }
+    if (modeKiriminAja() && !keranjang.kelurahan && !document.getElementById('wadahKelurahan').classList.contains('hidden')) { tampilkanToast('Pilih kelurahan / desa tujuan.'); return null; }
     if (!keranjang.pilihan) { tampilkanToast('Pilih kurir dulu.'); return null; }
     if (keranjang.voucher && hitungTotal().pesanVoucher) { tampilkanToast('Voucher belum memenuhi syarat. Hapus dulu atau ubah pesanan.'); return null; }
     return data;
@@ -927,6 +954,8 @@
     const kiriman = {
       ...form, produk_id: keranjang.produk.id, jumlah: keranjang.jumlah, metode_bayar: keranjang.metode,
       kecamatan_id: keranjang.tujuan.id,
+      kelurahan_id: keranjang.kelurahan ? keranjang.kelurahan.id : null,
+      kodepos: ((keranjang.tujuan.text || '').match(/(\d{5})\s*$/) || [])[1] || null,
       kurir: keranjang.pilihan.nama, ongkir: keranjang.pilihan.ongkir,
       kode_voucher: keranjang.voucher ? keranjang.voucher.kode : null,
       // Tarif bertanda tangan dari server (mode KiriminAja) — dicek ulang oleh database
@@ -1047,6 +1076,7 @@
     hasilLacak = {};
     data.forEach((p) => { hasilLacak[p.resi] = p; });
     wadah.innerHTML = data.map((p) => kartuPesanan(p, p.sudah_diulas)).join('');
+    data.filter((p) => p.ka_order_id).forEach((p) => muatRiwayat(p.resi, hp4));
   }
 
   function kartuPesanan(p, sudahDiulas) {
@@ -1075,8 +1105,33 @@
         <div class="text-sm text-ink/50">Total ${rupiah(p.total)} · ${NAMA_METODE[p.metode_bayar] || p.metode_bayar}</div>
         ${p.resi_kurir ? `<div class="mt-2 text-sm">No. Resi ${escapeHtml(p.kurir)}: <b class="font-mono select-all">${escapeHtml(p.resi_kurir)}</b></div>` : ''}
         <div class="flex items-start mt-4">${langkah}</div>
+        ${p.ka_order_id ? `<div id="riwayat-${escapeHtml(p.resi)}" class="mt-4 text-sm text-ink/40">Memuat riwayat perjalanan paket…</div>` : ''}
         ${bagianBawah}
       </div>`;
+  }
+
+  // Riwayat perjalanan paket langsung dari KiriminAja
+  async function muatRiwayat(resi, hp4) {
+    const el = document.getElementById('riwayat-' + resi);
+    if (!el) return;
+    try {
+      const r = await (await fetch('/api/kiriman', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aksi: 'lacak_publik', resi, hp4 }) })).json();
+      if (!r.ok || r.belum || !r.riwayat || !r.riwayat.length) { el.textContent = 'Paket sedang disiapkan untuk dijemput kurir.'; return; }
+      const urut = [...r.riwayat].reverse();   // terbaru di atas
+      el.className = 'mt-4';
+      el.innerHTML = `
+        <div class="text-xs font-semibold uppercase tracking-wider text-ink/50 mb-2">Perjalanan paket${r.awb ? ' · Resi ' + escapeHtml(r.awb) : ''}</div>
+        <ol class="border-l-2 border-sand ml-1 space-y-3">
+          ${urut.map((h, i) => `
+            <li class="pl-4 relative">
+              <span class="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full ${i === 0 ? 'bg-brass' : 'bg-sand'}"></span>
+              <div class="text-sm ${i === 0 ? 'font-semibold' : 'text-ink/70'}">${escapeHtml(h.status)}</div>
+              <div class="text-xs text-ink/40">${escapeHtml(h.waktu || '')}</div>
+            </li>`).join('')}
+        </ol>`;
+    } catch (e) {
+      el.textContent = '';
+    }
   }
 
   function formUlasan(p) {
@@ -1140,6 +1195,10 @@
     }
 
     document.getElementById('inKecamatan').addEventListener('input', ketikKecamatan);
+    document.getElementById('inKelurahan').addEventListener('change', (e) => {
+      const opt = e.target.selectedOptions[0];
+      keranjang.kelurahan = e.target.value ? { id: Number(e.target.value), nama: opt.textContent } : null;
+    });
     document.addEventListener('click', (e) => {   // tutup daftar saran kalau klik di luar
       if (!e.target.closest('#inKecamatan, #saranKecamatan')) document.getElementById('saranKecamatan').classList.add('hidden');
     });

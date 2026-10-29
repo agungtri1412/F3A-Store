@@ -9,6 +9,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
   <script src="config.js"></script>
+  <!-- Pembuat gambar QR (untuk QR pembayaran ongkir non-COD dari KiriminAja) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body class="bg-slate-100 text-slate-800 antialiased">
@@ -130,6 +132,15 @@
           <label class="block text-sm font-medium mb-1" for="fUrutan">Urutan</label>
           <input id="fUrutan" type="number" placeholder="1" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
         </div>
+      </div>
+      <div>
+        <span class="block text-sm font-medium mb-1">Ukuran paket setelah dikemas (cm)</span>
+        <div class="grid grid-cols-3 gap-3">
+          <input id="fPanjang" type="number" min="1" placeholder="Panjang" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+          <input id="fLebar" type="number" min="1" placeholder="Lebar" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+          <input id="fTinggi" type="number" min="1" placeholder="Tinggi" class="w-full rounded-xl border border-slate-300 px-3 py-2.5" />
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Dipakai kurir untuk menghitung berat volume (P×L×T). Ongkir memakai yang lebih besar: berat asli atau berat volume.</p>
       </div>
 
       <div>
@@ -258,6 +269,18 @@
         <button onclick="tutupModal('modalUlasan')" class="flex-1 bg-slate-100 hover:bg-slate-200 font-semibold py-3 rounded-xl">Batal</button>
         <button onclick="simpanUlasanManual()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl">Simpan</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===================== POP-UP INFO (pickup / lacak / bayar) ===================== -->
+  <div id="modalInfo" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" onclick="tutupModal('modalInfo')"></div>
+    <div class="relative bg-white w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl sm:m-6 p-5 sm:p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="judulInfo" class="text-lg font-bold">Info</h2>
+        <button onclick="tutupModal('modalInfo')" class="w-9 h-9 rounded-full hover:bg-slate-100 text-2xl leading-none">×</button>
+      </div>
+      <div id="isiInfo"></div>
     </div>
   </div>
 
@@ -427,7 +450,163 @@
             </div>
           </div>
         </div>
+        ${blokKiriminAja(p)}
       </div>`).join('');
+  }
+
+  /* =====================================================================
+     KIRIMINAJA — request pickup, label, lacak, batal, bayar ongkir
+     ===================================================================== */
+  const tombolKA = 'px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 hover:bg-slate-50';
+
+  function blokKiriminAja(p) {
+    if (p.status === 'Dibatalkan' && !p.ka_order_id) return '';
+    if (!p.ka_order_id) {
+      const bisa = p.layanan_kode && p.kelurahan_id;
+      return `
+        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+          <span class="text-slate-500">KiriminAja:</span>
+          ${p.ka_status ? `<span class="text-slate-500">${escapeHtml(p.ka_status)}</span>` : ''}
+          ${bisa
+            ? `<button onclick="bukaPickup(${p.id})" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white">🚚 Request Pickup</button>`
+            : '<span class="text-slate-400">Pesanan lama / mode simulasi, buat pickup manual di dashboard KiriminAja</span>'}
+        </div>`;
+    }
+    const nonCodBelumBayar = p.metode_bayar !== 'COD' && p.ka_payment_status && p.ka_payment_status !== 'paid';
+    return `
+      <div class="mt-3 pt-3 border-t border-slate-100 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 font-semibold">${escapeHtml(p.ka_status || 'Pickup diminta')}</span>
+          <span class="text-slate-500 font-mono">${escapeHtml(p.ka_order_id)}</span>
+          ${p.ka_jadwal ? `<span class="text-slate-500">Jemput: ${escapeHtml(p.ka_jadwal)}</span>` : ''}
+          ${p.resi_kurir ? `<span class="text-slate-700">Resi: <b class="font-mono">${escapeHtml(p.resi_kurir)}</b></span>` : '<span class="text-amber-700">Resi belum terbit</span>'}
+          ${nonCodBelumBayar ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">Ongkir belum dibayar</span>' : ''}
+        </div>
+        <div class="flex flex-wrap gap-2 mt-2">
+          <button onclick="lacakKA(${p.id})" class="${tombolKA}">📍 Lacak</button>
+          <button onclick="labelKA(${p.id})" class="${tombolKA}">🖨️ Cetak Label</button>
+          ${nonCodBelumBayar ? `<button onclick="bayarKA(${p.id})" class="${tombolKA}">💳 Bayar / Cek Ongkir</button>` : ''}
+          <button onclick="batalKA(${p.id})" class="${tombolKA} text-red-600">Batalkan Kirim</button>
+        </div>
+      </div>`;
+  }
+
+  // Panggil api/kiriman.js dengan token login admin
+  async function apiKiriman(aksi, data = {}) {
+    const { data: sesi } = await sb.auth.getSession();
+    const token = sesi && sesi.session && sesi.session.access_token;
+    const r = await fetch('/api/kiriman', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ aksi, ...data })
+    });
+    let hasil;
+    try { hasil = await r.json(); } catch (e) { hasil = { ok: false, pesan: 'Server tidak merespons (' + r.status + ').' }; }
+    return hasil;
+  }
+  function perbaruiLokal(id, ubah) {
+    const p = pesananData.find((x) => x.id === id);
+    // Abaikan nilai undefined supaya data lama (mis. QR) tidak ikut terhapus
+    if (p) Object.entries(ubah).forEach(([k, v]) => { if (v !== undefined) p[k] = v; });
+    renderPesanan();
+  }
+  function tampilModalInfo(judul, isiHtml) {
+    document.getElementById('judulInfo').textContent = judul;
+    document.getElementById('isiInfo').innerHTML = isiHtml;
+    document.getElementById('modalInfo').classList.remove('hidden');
+  }
+
+  // 1) Pilih jadwal lalu request pickup
+  async function bukaPickup(id) {
+    const p = pesananData.find((x) => x.id === id);
+    tampilModalInfo('Request Pickup', '<p class="text-sm text-slate-500">Memuat jadwal pickup…</p>');
+    const r = await apiKiriman('jadwal');
+    const pilihan = r.ok && r.jadwal && r.jadwal.length
+      ? r.jadwal.map((j, i) => `<label class="flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50"><input type="radio" name="jadwalKA" value="${escapeHtml(j.nilai)}" ${i === 0 ? 'checked' : ''} /> ${escapeHtml(j.label)}</label>`).join('')
+      : `<p class="text-sm text-amber-700">${escapeHtml(r.pesan || 'Jadwal tidak tersedia dari KiriminAja.')} Isi manual:</p>
+         <input id="jadwalManual" type="datetime-local" class="w-full rounded-lg border px-3 py-2" />`;
+    tampilModalInfo('Request Pickup', `
+      <div class="text-sm space-y-1 mb-4">
+        <div><b>${escapeHtml(p.resi)}</b> · ${escapeHtml(p.produk_nama)} x${p.jumlah || 1}</div>
+        <div class="text-slate-500">${escapeHtml(p.kurir)} · ${p.metode_bayar === 'COD' ? 'COD ' + rupiah(p.total) : 'Non-COD'} · ${p.berat_gram || '-'} g</div>
+        <div class="text-slate-500">Ke: ${escapeHtml(p.nama)}, ${escapeHtml(p.kota)}</div>
+      </div>
+      <div class="text-sm font-semibold mb-2">Jadwal jemput</div>
+      <div class="space-y-2 max-h-56 overflow-y-auto">${pilihan}</div>
+      ${p.metode_bayar !== 'COD' ? '<p class="text-xs text-amber-700 mt-3">Pesanan non-COD: setelah request, ongkir mungkin perlu dibayar (QR akan muncul) sebelum kurir menjemput.</p>' : ''}
+      <button id="btnKirimPickup" onclick="kirimPickup(${id})" class="mt-4 w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">Kirim Request Pickup</button>`);
+  }
+
+  async function kirimPickup(id) {
+    const radio = document.querySelector('input[name="jadwalKA"]:checked');
+    const manual = document.getElementById('jadwalManual');
+    const jadwal = radio ? radio.value : (manual && manual.value ? manual.value.replace('T', ' ') + ':00' : '');
+    if (!jadwal) { tampilkanToast('Pilih jadwal pickup.'); return; }
+    const tombol = document.getElementById('btnKirimPickup');
+    tombol.disabled = true; tombol.textContent = 'Mengirim ke KiriminAja…';
+    const r = await apiKiriman('pickup', { id, jadwal });
+    if (!r.ok) {
+      tombol.disabled = false; tombol.textContent = 'Kirim Request Pickup';
+      tampilkanToast(r.pesan || 'Gagal request pickup.');
+      if (r.detail) console.warn('Detail dari KiriminAja:', r.detail);
+      return;
+    }
+    tutupModal('modalInfo');
+    perbaruiLokal(id, r);
+    tampilkanToast(r.pesan || 'Request pickup berhasil.');
+    if (r.ka_qr && r.ka_payment_status !== 'paid') bayarKA(id);
+  }
+
+  // 2) Lacak paket
+  async function lacakKA(id) {
+    tampilModalInfo('Lacak Paket', '<p class="text-sm text-slate-500">Mengambil data dari KiriminAja…</p>');
+    const r = await apiKiriman('lacak', { id });
+    if (!r.ok) { tampilModalInfo('Lacak Paket', `<p class="text-sm text-red-600">${escapeHtml(r.pesan)}</p>`); return; }
+    perbaruiLokal(id, { resi_kurir: r.resi_kurir || r.awb || undefined, ka_status: r.ka_status || undefined });
+    const riwayat = [...(r.riwayat || [])].reverse();
+    tampilModalInfo('Lacak Paket', `
+      <div class="text-sm mb-3">Resi: <b class="font-mono">${escapeHtml(r.awb || 'belum terbit')}</b> · ${escapeHtml(r.layanan || '')}
+        ${r.terkirim ? '<span class="ml-2 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">Terkirim</span>' : ''}</div>
+      ${riwayat.length ? `<ol class="border-l-2 border-slate-200 ml-1 space-y-3">${riwayat.map((h) => `
+        <li class="pl-4"><div class="text-sm font-medium">${escapeHtml(h.status)}</div><div class="text-xs text-slate-500">${escapeHtml(h.waktu || '')}${h.penerima ? ' · Penerima: ' + escapeHtml(h.penerima) : ''}</div></li>`).join('')}</ol>`
+        : '<p class="text-sm text-slate-500">Belum ada riwayat perjalanan.</p>'}
+      ${r.terkirim ? '<p class="text-xs text-emerald-700 mt-4">Paket sudah diterima, ubah status pesanan ke "Selesai" lalu kirim WA ke pembeli.</p>' : ''}`);
+  }
+
+  // 3) Cetak label (PDF resmi KiriminAja)
+  async function labelKA(id) {
+    const tab = window.open('', '_blank');
+    const r = await apiKiriman('label', { id });
+    if (!r.ok) { if (tab) tab.close(); tampilkanToast(r.pesan || 'Label belum tersedia.'); return; }
+    perbaruiLokal(id, { resi_kurir: r.awb });
+    if (tab) tab.location.href = r.url; else window.open(r.url, '_blank');
+  }
+
+  // 4) Batalkan pengiriman
+  async function batalKA(id) {
+    const alasan = prompt('Alasan pembatalan pengiriman:', 'Dibatalkan penjual');
+    if (alasan === null) return;
+    const r = await apiKiriman('batal', { id, alasan });
+    if (!r.ok) { tampilkanToast(r.pesan || 'Gagal membatalkan.'); return; }
+    perbaruiLokal(id, r);
+    tampilkanToast(r.pesan || 'Pengiriman dibatalkan.');
+  }
+
+  // 5) Bayar ongkir non-COD (QR dari KiriminAja) & cek status
+  async function bayarKA(id) {
+    tampilModalInfo('Bayar Ongkir', '<p class="text-sm text-slate-500">Mengecek tagihan…</p>');
+    const r = await apiKiriman('bayar', { id });
+    if (!r.ok) { tampilModalInfo('Bayar Ongkir', `<p class="text-sm text-red-600">${escapeHtml(r.pesan)}</p>`); return; }
+    perbaruiLokal(id, { ka_payment_status: r.ka_payment_status, ka_qr: r.ka_qr || undefined });
+    if (r.lunas) { tampilModalInfo('Bayar Ongkir', '<p class="text-sm text-emerald-700 font-semibold">✓ Ongkir sudah dibayar. Kurir akan menjemput sesuai jadwal.</p>'); return; }
+    const p = pesananData.find((x) => x.id === id);
+    tampilModalInfo('Bayar Ongkir', `
+      <p class="text-sm">Scan QR berikut dengan aplikasi bank / e-wallet untuk membayar ongkir${r.jumlah ? ' <b>' + rupiah(r.jumlah) + '</b>' : ''}.</p>
+      ${r.batas ? `<p class="text-xs text-slate-500">Batas bayar: ${escapeHtml(r.batas)}</p>` : ''}
+      <div id="qrKA" class="my-4 flex justify-center"></div>
+      <button onclick="bayarKA(${id})" class="w-full border border-slate-300 rounded-xl py-2.5 text-sm font-semibold">Saya sudah bayar, cek lagi</button>`);
+    if (p && p.ka_qr && window.QRCode) new QRCode(document.getElementById('qrKA'), { text: p.ka_qr, width: 220, height: 220 });
+    else document.getElementById('qrKA').innerHTML = '<p class="text-sm text-amber-700">QR tidak tersedia. Bayar lewat dashboard KiriminAja atau saldo KA Credit.</p>';
   }
 
   async function simpanPesanan(id) {
@@ -540,7 +719,10 @@
     document.getElementById('judulFormProduk').textContent = p ? 'Edit Produk' : 'Tambah Produk';
     document.getElementById('fNama').value = p ? p.nama : '';
     document.getElementById('fHarga').value = p ? p.harga : '';
-    document.getElementById('fBerat').value = p ? p.berat_gram : 200;
+    document.getElementById('fBerat').value = p ? p.berat_gram : 250;
+    document.getElementById('fPanjang').value = p ? (p.panjang_cm || 10) : 10;
+    document.getElementById('fLebar').value = p ? (p.lebar_cm || 10) : 10;
+    document.getElementById('fTinggi').value = p ? (p.tinggi_cm || 10) : 10;
     document.getElementById('fUrutan').value = p ? p.urutan : produkData.length + 1;
     document.getElementById('fDeskripsi').value = p ? p.deskripsi : '';
     document.getElementById('fAktif').checked = p ? p.aktif : true;
@@ -653,7 +835,10 @@
     const data = {
       nama: document.getElementById('fNama').value.trim(),
       harga: parseInt(document.getElementById('fHarga').value, 10),
-      berat_gram: parseInt(document.getElementById('fBerat').value, 10) || 200,
+      berat_gram: parseInt(document.getElementById('fBerat').value, 10) || 250,
+      panjang_cm: parseInt(document.getElementById('fPanjang').value, 10) || 10,
+      lebar_cm: parseInt(document.getElementById('fLebar').value, 10) || 10,
+      tinggi_cm: parseInt(document.getElementById('fTinggi').value, 10) || 10,
       urutan: parseInt(document.getElementById('fUrutan').value, 10) || 0,
       deskripsi: document.getElementById('fDeskripsi').value.trim(),
       aktif: document.getElementById('fAktif').checked,
@@ -891,7 +1076,24 @@
     bacaFormPengaturan();
     pengaturanData.asal.kecamatan_id = hasilAsal[i].id;
     pengaturanData.asal.kecamatan = hasilAsal[i].text;
+    pengaturanData.asal.kelurahan_id = null;
+    pengaturanData.asal.kelurahan = '';
     renderPengaturan();
+  }
+
+  // Isi pilihan kelurahan pengirim (dipanggil setelah form pengaturan digambar)
+  async function muatKelurahanAsal() {
+    const sel = document.getElementById('pAsalKel');
+    const asal = pengaturanData.asal;
+    if (!sel || !asal.kecamatan_id) return;
+    sel.innerHTML = '<option value="">Memuat kelurahan…</option>';
+    try {
+      const r = await (await fetch('/api/ongkir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aksi: 'kelurahan', kecamatan_id: asal.kecamatan_id }) })).json();
+      sel.innerHTML = '<option value="">— Pilih kelurahan pengirim —</option>' + ((r && r.data) || [])
+        .map((d) => `<option value="${d.id}" ${Number(asal.kelurahan_id) === Number(d.id) ? 'selected' : ''}>${escapeHtml(d.nama)}</option>`).join('');
+    } catch (e) {
+      sel.innerHTML = '<option value="">Gagal memuat kelurahan</option>';
+    }
   }
 
   const kotak = (judul, isi, ket = '') => `
@@ -1001,6 +1203,8 @@
             <input id="pAsalCari" oninput="cariAsal(this.value)" autocomplete="off" placeholder="Ketik nama kecamatan, mis. Bulak" class="${inputKelas}" />
             <div id="saranAsal" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border rounded-xl shadow-lg max-h-56 overflow-y-auto"></div>
           </div>
+          ${s.asal.kecamatan_id ? `<div><label class="block text-xs font-medium mb-1" for="pAsalKel">Kelurahan pengirim</label>
+            <select id="pAsalKel" class="${inputKelas} bg-white"><option value="${s.asal.kelurahan_id || ''}">${escapeHtml(s.asal.kelurahan || 'Memuat…')}</option></select></div>` : ''}
         </div>`, 'Ongkir dihitung dari kecamatan ini ke kecamatan pembeli. Alamat lengkap dipakai saat request pickup.') +
       kotak('📦 Kurir', `
         <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 font-medium pb-1">
@@ -1009,6 +1213,7 @@
         ${kurir}
         <button type="button" onclick="ubahDaftar('kurir')" class="mt-2 text-sm font-semibold text-emerald-700">+ Tambah kurir</button>`,
         'Hanya kurir yang Aktif yang ditawarkan ke pembeli. Mode KiriminAja: status COD diambil dari KiriminAja, dan centang COD di sini untuk mengizinkan/melarang COD per kurir. "Selisih" hanya dipakai di mode Simulasi.');
+    muatKelurahanAsal();
   }
 
   // Baca isi form pengaturan ke pengaturanData (dipanggil sebelum simpan / ubah daftar)
@@ -1026,6 +1231,8 @@
     s.asal.nama = document.getElementById('pAsalNama').value.trim();
     s.asal.hp = document.getElementById('pAsalHp').value.replace(/\D/g, '').replace(/^0/, '62');
     s.asal.alamat = document.getElementById('pAsalAlamat').value.trim();
+    const selKel = document.getElementById('pAsalKel');
+    if (selKel && selKel.value) { s.asal.kelurahan_id = Number(selKel.value); s.asal.kelurahan = selKel.selectedOptions[0].textContent; }
     document.querySelectorAll('[data-kur]').forEach((el) => {
       const k = s.kurir[el.dataset.kur];
       if (el.type === 'checkbox') k[el.dataset.f] = el.checked;
@@ -1099,6 +1306,8 @@
     if (b.cod.aktif && !s.kurir.some((k) => k.aktif && k.cod)) { tampilkanToast('COD aktif, tapi belum ada kurir aktif yang bisa COD.'); return; }
     if (s.ongkir_mode === 'kiriminaja') {
       if (!s.asal.kecamatan_id) { tampilkanToast('Pilih kecamatan pengirim dulu sebelum memakai ongkir KiriminAja.'); return; }
+      if (!s.asal.kelurahan_id) { tampilkanToast('Pilih kelurahan pengirim (wajib untuk request pickup).'); return; }
+      if (s.asal.alamat.length < 10) { tampilkanToast('Alamat pickup minimal 10 karakter.'); return; }
       const tanpaKode = s.kurir.find((k) => k.aktif && !k.kode);
       if (tanpaKode) { tampilkanToast(`Kurir "${tanpaKode.nama}" belum punya kode KiriminAja.`); return; }
     }
