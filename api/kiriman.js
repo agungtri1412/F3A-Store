@@ -85,6 +85,14 @@ function rapikanTracking(d) {
     penerima: h.receiver || null
   })).filter((h) => h.status)
     .sort((x, y) => String(x.waktu || '').localeCompare(String(y.waktu || '')));   // lama → baru
+  // Kalau KiriminAja tidak mengirim daftar riwayat (sandbox), susun dari tanggal-tanggal yang ada
+  if (!riwayat.length) {
+    if (det.created_at) riwayat.push({ waktu: det.created_at, status: 'Pesanan dibuat', kode: 100, penerima: null });
+    if (det.shipped_at) riwayat.push({ waktu: det.shipped_at, status: 'Paket dikirim kurir', kode: 106, penerima: null });
+    if (det.delivered_at) riwayat.push({ waktu: det.delivered_at, status: 'Paket diterima', kode: 200, penerima: det.receiver || null });
+    if (det.returned_at || det.refunded_at) riwayat.push({ waktu: det.returned_at || det.refunded_at, status: 'Paket dikembalikan', kode: 400, penerima: null });
+    if (!riwayat.length && isi.text && isi.status === true) riwayat.push({ waktu: null, status: String(isi.text), kode: isi.status_code || null, penerima: null });
+  }
   const kode = Number(isi.status_code || det.status_code || (riwayat.length ? riwayat[riwayat.length - 1].kode : 0));
   const benar = (v) => v === true || v === 1 || v === '1' || v === 'true';
   return {
