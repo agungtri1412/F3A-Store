@@ -73,18 +73,29 @@ const simpanPesanan = (id, ubah, token) => supa(`pesanan?id=eq.${parseInt(id, 10
 
 // Ringkas hasil tracking KiriminAja
 function rapikanTracking(d) {
-  const det = d.details || {};
-  const riwayat = (Array.isArray(d.histories) ? d.histories : []).map((h) => ({
-    waktu: h.created_at, status: h.status, kode: h.status_code, penerima: h.receiver || null
-  }));
+  // Format respons bisa beda antara sandbox & production → dibaca setoleran mungkin
+  const isi = (d.data && typeof d.data === 'object' && !Array.isArray(d.data)) ? { ...d.data, ...d } : d;
+  const det = isi.details || isi.detail || {};
+  const listRiwayat = [isi.histories, isi.history, det.histories, det.history, isi.data && isi.data.histories]
+    .find((x) => Array.isArray(x)) || [];
+  const riwayat = listRiwayat.map((h) => ({
+    waktu: h.created_at || h.date || h.time || h.datetime || null,
+    status: h.status || h.description || h.desc || h.note || String(h.status_code || ''),
+    kode: h.status_code || h.code || null,
+    penerima: h.receiver || null
+  })).filter((h) => h.status)
+    .sort((x, y) => String(x.waktu || '').localeCompare(String(y.waktu || '')));   // lama → baru
+  const kode = Number(isi.status_code || det.status_code || (riwayat.length ? riwayat[riwayat.length - 1].kode : 0));
+  const benar = (v) => v === true || v === 1 || v === '1' || v === 'true';
   return {
-    awb: det.awb || null,
+    awb: det.awb || isi.awb || null,
     layanan: det.service_name || det.service || null,
     estimasi: det.estimation || null,
-    terkirim: !!det.delivered,
-    terkirim_pada: det.delivered_at || null,
+    kode_status: kode || null,
+    terkirim: kode === 200 || benar(det.delivered),
+    terkirim_pada: det.delivered_at || det.finished_at || null,
     dikirim_pada: det.shipped_at || null,
-    dikembalikan: !!det.refunded,
+    dikembalikan: kode === 400 || benar(det.refunded) || benar(det.returned),
     riwayat
   };
 }
@@ -274,7 +285,8 @@ module.exports = async (req, res) => {
       const statusBaru = t.terkirim ? 'Terkirim' : (t.dikembalikan ? 'Dikembalikan' : terakhir);
       if (statusBaru && statusBaru !== p.ka_status) ubah.ka_status = statusBaru;
       if (Object.keys(ubah).length) await simpanPesanan(p.id, ubah, token);
-      return res.status(200).json({ ok: true, ...t, ...ubah });
+      // Respons mentah ikut dikirim (tanpa data sensitif) supaya bisa dicek kalau riwayat kosong
+      return res.status(200).json({ ok: true, ...t, ...ubah, mentah: d });
     }
 
     // ---------- Cetak label (PDF resmi KiriminAja) ----------
